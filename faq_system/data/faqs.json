@@ -1,0 +1,298 @@
+[
+  {
+    "id": "faq_001",
+    "question": "What are the prerequisites for enrolling in CS-202?",
+    "answer": "CS-202 (Data Structures) requires successful completion of CS-101 (Introduction to Programming) with a minimum grade of C. Students must also have completed the first-semester mathematics requirement.",
+    "category": "course",
+    "metadata": {
+      "course_code": "CS-202",
+      "department": "Computer Science",
+      "type": "prerequisite"
+    }
+  },
+  {
+    "id": "faq_002",
+    "question": "Is CS-202 available in the summer term?",
+    "answer": "CS-202 is offered in both Fall and Spring semesters. It is not available during the summer term. Students are advised to plan their schedules accordingly.",
+    "category": "course",
+    "metadata": {
+      "course_code": "CS-202",
+      "department": "Computer Science",
+      "type": "schedule"
+    }
+  },
+  {
+    "id": "faq_003",
+    "question": "What topics are covered in ENG-404?",
+    "answer": "ENG-404 (Advanced Technical Writing) covers professional documentation, grant proposal writing, scientific report structures, peer review processes, and publication ethics. It is a capstone-level course for Engineering students.",
+    "category": "course",
+    "metadata": {
+      "course_code": "ENG-404",
+      "department": "English",
+      "type": "syllabus"
+    }
+  },
+  {
+    "id": "faq_004",
+    "question": "Can I take ENG-404 without completing ENG-301?",
+    "answer": "ENG-404 has a strict prerequisite of ENG-301 (Technical Communication). Students who have not completed ENG-301 with a minimum B grade will not be permitted to register for ENG-404.",
+    "category": "course",
+    "metadata": {
+      "course_code": "ENG-404",
+      "department": "English",
+      "type": "prerequisite"
+    }
+  },
+  {
+    "id": "faq_005",
+    "question": "What happens if I miss a mid-semester examination?",
+    "answer": "If you miss a mid-semester exam due to a medical emergency or approved reason, you must submit a formal application to the Dean's office within 48 hours. Supporting documents are required. Make-up exams are scheduled at the discretion of the department head.",
+    "category": "exam",
+    "metadata": {
+      "type": "policy",
+      "urgency": "high"
+    }
+  },
+  {
+    "id": "faq_006",
+    "question": "What is the policy for late submission of assignments?",
+    "answer": "Late submissions are penalised at 10% per day, up to a maximum of 3 days. After 3 days, the submission will not be accepted and a zero will be recorded. Extensions may be granted for exceptional circumstances with prior approval from the course instructor.",
+    "category": "exam",
+    "metadata": {
+      "type": "policy"
+    }
+  },
+  {
+    "id": "faq_007",
+    "question": "How do I appeal a grade that I believe is incorrect?",
+    "answer": "To appeal a grade, submit a Grade Appeal Form to the Academic Affairs office within 10 working days of the result being published. You must include a written justification and supporting evidence. The department review committee will respond within 15 working days.",
+    "category": "exam",
+    "metadata": {
+      "type": "appeal"
+    }
+  },
+  {
+    "id": "faq_008",
+    "question": "What is the minimum attendance requirement to appear for the final exam?",
+    "answer": "Students must maintain a minimum of 75% attendance in each subject to be eligible to appear for the final examination. Students falling below this threshold will be issued a detention notice by the academic office.",
+    "category": "exam",
+    "metadata": {
+      "type": "attendance"
+    }
+  },
+  {
+    "id": "faq_009",
+    "question": "What is the procedure to apply for a re-evaluation of answer sheets?",
+    "answer": "Students may apply for re-evaluation of their answer scripts within 7 days of result declaration by paying the prescribed re-evaluation fee at the accounts office. Re-evaluation requests are processed within 30 days, and the revised result replaces the original only if the score improves.",
+    "category": "exam",
+    "metadata": {
+      "type": "re-evaluation"
+    }
+  },
+  {
+    "id": "faq_010",
+    "question": "What are the hostel accommodation options available for freshers?",
+    "answer": "The university offers single-occupancy, double-occupancy, and triple-occupancy rooms in two hostel blocks: Block A (for undergraduate students) and Block B (for postgraduate students). All rooms are furnished with beds, study tables, and Wi-Fi access. Students must apply through the Student Services portal before the deadline.",
+    "category": "hostel",
+    "metadata": {
+      "type": "accommodation"
+    }
+  },
+  {
+    "id": "faq_011",
+    "question": "What is the hostel fee for a double-occupancy room per semester?",
+    "answer": "The hostel fee for a double-occupancy room is ₹25,000 per semester, which includes room rent, electricity, and Wi-Fi charges. Meals are optional and charged separately at ₹5,000 per month from the hostel mess.",
+    "category": "hostel",
+    "metadata": {
+      "type": "fees"
+    }
+  },
+  {
+    "id": "faq_012",
+    "question": "What are the hostel curfew rules and visiting hours?",
+    "answer": "All students must return to the hostel by 10:00 PM on weekdays and 11:00 PM on weekends. Visitors are permitted in the common rooms between 9:00 AM and 7:00 PM. Overnight guests are strictly prohibited. Violation of curfew rules may result in suspension of hostel privileges.",
+    "category": "hostel",
+    "metadata": {
+      "type": "rules"
+    }
+  },
+  {
+    "id": "faq_013",
+    "question": "Is there a hostel warden I can contact in case of an emergency?",
+    "answer": "Each hostel block has a resident warden available 24 hours. The warden's contact number is posted at the entrance and on the Student Services portal. For medical emergencies, the campus health centre is on call round the clock.",
+    "category": "hostel",
+    "metadata": {
+      "type": "contact"
+    }
+  },
+  {
+    "id": "faq_014",
+    "question": "What is the total annual tuition fee for the B.Tech programme?",
+    "answer": "The annual tuition fee for the B.Tech programme is ₹1,20,000 per year. This is exclusive of examination fees, library fees, and laboratory usage charges, which together amount to approximately ₹8,000 per year.",
+    "category": "fees",
+    "metadata": {
+      "programme": "B.Tech",
+      "type": "tuition"
+    }
+  },
+  {
+    "id": "faq_015",
+    "question": "When is the deadline to pay semester fees without a late penalty?",
+    "answer": "Semester fees must be paid before the 15th of the first month of each semester. A late fee of ₹500 per week is charged after the due date. Students who do not pay fees within 30 days of the deadline risk de-registration from their courses.",
+    "category": "fees",
+    "metadata": {
+      "type": "deadline"
+    }
+  },
+  {
+    "id": "faq_016",
+    "question": "Are there any instalment options available for paying tuition fees?",
+    "answer": "Yes, the university offers an instalment plan where fees can be paid in two equal parts: 50% at the start of the semester and the remaining 50% by the 8th week. Students must apply for the instalment plan at the finance office before the fee payment deadline.",
+    "category": "fees",
+    "metadata": {
+      "type": "instalment"
+    }
+  },
+  {
+    "id": "faq_017",
+    "question": "How do I obtain a fee receipt for visa or loan purposes?",
+    "answer": "Detailed fee receipts are available on the Student Services portal under the 'Fee History' section. You can download and print the receipt. For official stamped copies required for visa or loan applications, submit a request to the accounts office with relevant documentation.",
+    "category": "fees",
+    "metadata": {
+      "type": "receipt"
+    }
+  },
+  {
+    "id": "faq_018",
+    "question": "What merit scholarships are available for undergraduate students?",
+    "answer": "The university offers the Vice Chancellor's Merit Scholarship for students who rank in the top 5% of their batch. The scholarship covers 50% of tuition fees for one academic year and is renewable based on continued academic performance (CGPA ≥ 8.5).",
+    "category": "scholarship",
+    "metadata": {
+      "type": "merit"
+    }
+  },
+  {
+    "id": "faq_019",
+    "question": "Is there a scholarship available for students from economically weaker sections?",
+    "answer": "Yes, the university offers the Need-Based Financial Aid Grant for students whose family income is below ₹3,00,000 per annum. Students must submit income proof and apply through the Scholarship Cell before the 30th of September each year.",
+    "category": "scholarship",
+    "metadata": {
+      "type": "need-based"
+    }
+  },
+  {
+    "id": "faq_020",
+    "question": "Can I apply for both a merit scholarship and a need-based grant simultaneously?",
+    "answer": "No, students may not receive both the merit scholarship and the need-based grant at the same time. However, students are encouraged to apply for both and the Scholarship Committee will award the one with the higher financial benefit based on eligibility.",
+    "category": "scholarship",
+    "metadata": {
+      "type": "policy"
+    }
+  },
+  {
+    "id": "faq_021",
+    "question": "What is the application process for government scholarships like the National Merit Scholarship?",
+    "answer": "Government scholarships such as the National Merit Scholarship are processed through the National Scholarship Portal at scholarships.gov.in. The university's scholarship cell assists students with the verification process. Ensure your institution is correctly listed before applying.",
+    "category": "scholarship",
+    "metadata": {
+      "type": "government"
+    }
+  },
+  {
+    "id": "faq_022",
+    "question": "Which companies have recruited from the campus in the last placement season?",
+    "answer": "The last placement season saw recruitments from companies including TCS, Infosys, Wipro, Cognizant, Amazon, Deloitte, HDFC Bank, and several mid-size startups. The highest package offered was ₹24 LPA by a product-based technology company.",
+    "category": "placement",
+    "metadata": {
+      "type": "recruiters"
+    }
+  },
+  {
+    "id": "faq_023",
+    "question": "What is the average placement package for Computer Science graduates?",
+    "answer": "The average placement package for Computer Science graduates in the last academic year was ₹8.5 LPA. The median package was ₹7.2 LPA. Over 85% of eligible CSE students were placed within three months of the placement season opening.",
+    "category": "placement",
+    "metadata": {
+      "department": "Computer Science",
+      "type": "statistics"
+    }
+  },
+  {
+    "id": "faq_024",
+    "question": "How do I register for the campus placement process?",
+    "answer": "Students in their final year must register on the Training and Placement portal by the 1st of August. Ensure your resume is updated, CGPA is above the company's stated minimum, and you have cleared any active backlogs before the registration deadline.",
+    "category": "placement",
+    "metadata": {
+      "type": "process"
+    }
+  },
+  {
+    "id": "faq_025",
+    "question": "Is there a dress code or preparation requirement for placement interviews?",
+    "answer": "Formal business attire is mandatory on all placement interview days. The Training and Placement Cell organises mock interviews, group discussions, and aptitude training workshops starting from the 6th semester. Attendance at these workshops is strongly recommended.",
+    "category": "placement",
+    "metadata": {
+      "type": "preparation"
+    }
+  },
+  {
+    "id": "faq_026",
+    "question": "How do I apply for a leave of absence from the university for a semester?",
+    "answer": "To apply for a semester leave of absence, submit the Leave Application Form to the Academic Affairs office. Supporting documentation (medical, family emergency, or personal reason proof) is required. The application must be submitted at least 2 weeks before the semester begins. Final approval rests with the Dean of Students.",
+    "category": "administration",
+    "metadata": {
+      "type": "leave"
+    }
+  },
+  {
+    "id": "faq_027",
+    "question": "What is the procedure to change my major or switch departments?",
+    "answer": "Students may apply to change their major at the end of their first or second year. The process involves submitting a Department Transfer Request Form, obtaining consent from both the current and target department heads, and meeting the CGPA requirement (minimum 7.0) for the target programme.",
+    "category": "administration",
+    "metadata": {
+      "type": "transfer"
+    }
+  },
+  {
+    "id": "faq_028",
+    "question": "How can I access the university library's digital resources from home?",
+    "answer": "The university library provides remote access to digital databases including IEEE Xplore, JSTOR, Springer, and ACM Digital Library. Log in using your student credentials on the library portal. VPN access may be required; instructions are available on the IT helpdesk page.",
+    "category": "administration",
+    "metadata": {
+      "type": "library"
+    }
+  },
+  {
+    "id": "faq_029",
+    "question": "What support services are available for students experiencing mental health issues?",
+    "answer": "The university offers a confidential counselling service through the Student Wellness Centre. Appointments can be booked online or in person. The centre also provides workshops on stress management, mindfulness, and academic pressure. All sessions are free of charge for enrolled students.",
+    "category": "wellbeing",
+    "metadata": {
+      "type": "mental_health"
+    }
+  },
+  {
+    "id": "faq_030",
+    "question": "What is the process for reporting academic misconduct or plagiarism?",
+    "answer": "Academic misconduct, including plagiarism, cheating, or falsification of records, must be reported to the Academic Integrity Committee. Reports can be submitted anonymously through the university's integrity portal. Penalties range from a zero on the assignment to expulsion, depending on the severity of the offence.",
+    "category": "administration",
+    "metadata": {
+      "type": "integrity"
+    }
+  },
+  {
+    "id": "faq_031",
+    "question": "How do I contact student support?",
+    "answer": "Student support can be reached at support@university.edu or by visiting the help desk in Building A.",
+    "category": "administration",
+    "tags": [
+      "contact",
+      "support",
+      "help"
+    ],
+    "metadata": {
+      "type": "user_added",
+      "created_at": 1775150953
+    }
+  }
+]

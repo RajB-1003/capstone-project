@@ -1,0 +1,42 @@
+{
+  "_comment": "Intent exemplars for Tier 2 semantic intent classification. Each key is an intent label. Each value is a list of representative queries that best capture that intent. Add or extend intents here — no code changes required.",
+
+  "conceptual": [
+    "What happens if I miss an exam?",
+    "Can I retake a course I failed?",
+    "What is the minimum attendance requirement to sit the final exam?",
+    "How do I appeal an incorrect or unfair grade?",
+    "What is the policy for plagiarism and academic misconduct?",
+    "Is there a make-up exam if I miss the scheduled test?",
+    "Can I defer my semester due to a medical emergency?",
+    "What are the rules for group assignment submissions?",
+    "What is the consequence of failing two subjects in one term?",
+    "How many times can I repeat a failed course?"
+  ],
+
+  "informational": [
+    "What is the hostel fee per semester?",
+    "How much is the annual tuition fee for the B.Tech programme?",
+    "What merit scholarship is available for undergraduate students?",
+    "Which companies came for campus recruitment this year?",
+    "What is the average salary package offered during placement?",
+    "How much financial aid is available for low-income students?",
+    "What is the fee for a double occupancy hostel room?",
+    "Are there any need-based grants for students?",
+    "What is the hostel curfew timing on weekdays?",
+    "What are the visiting hours for hostel guests?"
+  ],
+
+  "procedural": [
+    "How do I apply for a leave of absence from university?",
+    "What is the process to change my department or major?",
+    "How do I register for the campus placement season?",
+    "What documents are required for the scholarship application?",
+    "How do I access digital library resources from home?",
+    "What is the procedure to get an official fee receipt?",
+    "How do I submit a re-evaluation request for my exam?",
+    "What steps do I follow to appeal a grade?",
+    "How do I report an incident of academic misconduct?",
+    "Where can I book a counselling appointment at the wellness centre?"
+  ]
+}

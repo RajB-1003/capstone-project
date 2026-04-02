@@ -1,0 +1,28 @@
+{
+  "_comment": "Regex patterns for Tier 1 deterministic entity detection. All patterns are pre-compiled at load time. To add a new pattern type, add a new key — no code changes required.",
+
+  "course_code": {
+    "pattern": "\\b[A-Z]{2,6}-\\d{3,4}\\b",
+    "description": "University course codes (e.g., CS-202, ENG-404, MATH-101, PHYS-301)"
+  },
+
+  "fee_receipt_id": {
+    "pattern": "\\bREC-\\d{6,10}\\b",
+    "description": "Fee receipt identifiers (e.g., REC-123456)"
+  },
+
+  "student_id": {
+    "pattern": "\\bSTU-\\d{4,8}\\b",
+    "description": "Student enrollment ID numbers (e.g., STU-20240001)"
+  },
+
+  "building_id": {
+    "pattern": "\\bBLOCK-[A-Z]{1,2}\\b",
+    "description": "Campus building or hostel block identifiers (e.g., BLOCK-A, BLOCK-B)"
+  },
+
+  "exam_roll": {
+    "pattern": "\\bEXAM-\\d{4,10}\\b",
+    "description": "Examination roll numbers issued per semester"
+  }
+}
