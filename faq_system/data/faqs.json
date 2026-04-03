@@ -294,5 +294,19 @@
       "type": "user_added",
       "created_at": 1775150953
     }
+  },
+  {
+    "id": "faq_032",
+    "question": "Hostel fees for PHY-101",
+    "answer": "Hostel Fees for PHY-101 is 1lakh",
+    "category": "fees",
+    "tags": [
+      "fees",
+      "hostel"
+    ],
+    "metadata": {
+      "type": "user_added",
+      "created_at": 1775224131
+    }
   }
 ]

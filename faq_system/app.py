@@ -40,16 +40,16 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
 /* PAGE HEADER */
 .page-header {
-    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #818cf8 100%);
     border-radius: 16px; padding: 24px 32px 20px; margin-bottom: 16px;
-    border: 1px solid rgba(148,163,184,0.1);
-    box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+    border: 1px solid rgba(99,102,241,0.2);
+    box-shadow: 0 8px 40px rgba(99,102,241,0.18);
 }
-.page-header h1 { margin:0 0 4px; font-size:1.9rem; font-weight:800; color:#f8fafc; }
-.page-header .sub { margin:0; font-size:0.85rem; color:#64748b; }
+.page-header h1 { margin:0 0 4px; font-size:1.9rem; font-weight:800; color:#ffffff; }
+.page-header .sub { margin:0; font-size:0.85rem; color:rgba(255,255,255,0.75); }
 .phase-pills { margin-top:10px; display:flex; gap:6px; flex-wrap:wrap; }
-.phase-pill  { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.09);
-               border-radius:20px; padding:2px 10px; font-size:0.65rem; color:#94a3b8; }
+.phase-pill  { background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25);
+               border-radius:20px; padding:2px 10px; font-size:0.65rem; color:rgba(255,255,255,0.9); }
 
 /* ROUTE HERO */
 .route-hero { border-radius:14px; padding:22px 24px 18px; border:2px solid; }
@@ -171,6 +171,12 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
                    padding:14px 16px; margin-bottom:10px; }
 .manage-faq-q { font-weight:700; color:#0f172a; font-size:0.9rem; margin-bottom:3px; }
 .manage-faq-meta { font-size:0.72rem; color:#94a3b8; }
+
+/* SIDEBAR — always expanded, collapse button hidden */
+[data-testid="stSidebarCollapsedControl"] { display: none !important; }
+[data-testid="collapsedControl"]          { display: none !important; }
+button[kind="header"]                     { display: none !important; }
+section[data-testid="stSidebar"] { min-width: 220px !important; }
 </style>
 """, unsafe_allow_html=True)
 

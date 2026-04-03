@@ -39,12 +39,13 @@ desktop.ini
 # Jupyter
 .ipynb_checkpoints/
 
-# Model / cache files
+# Model / cache / binary data files
 *.pkl
 *.h5
 *.bin
 *.pt
 *.pth
+*.npy
 faiss_index/
 chroma_db/
 *.faiss
@@ -53,6 +54,17 @@ chroma_db/
 *.log
 logs/
 
-# Temp
+# Temp / scratch
 *.tmp
 *.bak
+
+# Word / Office documents (design docs, not source code)
+*.docx
+*.doc
+*.xlsx
+*.pptx
+
+# Scratch text files
+build_doc.txt
+doc_content.txt
+Docs/
