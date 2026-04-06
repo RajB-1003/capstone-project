@@ -658,6 +658,7 @@ model, corpus_embeddings, faq_docs, bm25_index, patterns, intent_embeddings = fi
 from modules.pipeline    import run_pipeline
 from modules.comparison  import compare_retrieval
 from modules.faq_manager import load_faqs, add_faq, edit_faq, delete_faq, get_categories
+from modules.rag_demo    import generate_rag_answer
 
 PIPELINE_ARGS = dict(
     model=model, corpus_embeddings=corpus_embeddings, faq_docs=faq_docs,
@@ -667,8 +668,8 @@ PIPELINE_ARGS = dict(
 # ═══════════════════════════════════════════════════════════════
 # TABS
 # ═══════════════════════════════════════════════════════════════
-tab_search, tab_compare, tab_manage = st.tabs([
-    "🔍 Search", "⚖️ Compare", "📋 Manage FAQs"
+tab_search, tab_compare, tab_manage, tab_rag = st.tabs([
+    "🔍 Search", "⚖️ Compare", "📋 Manage FAQs", "🤖 RAG Answer"
 ])
 
 
@@ -969,3 +970,36 @@ with tab_manage:
                         st.rerun()
                     except ValueError as e:
                         st.error(str(e))
+
+# ─────────────────────────────────────────────────────────────
+# TAB 4: RAG ANSWER
+# ─────────────────────────────────────────────────────────────
+with tab_rag:
+    st.subheader("🤖 Generated RAG Answer")
+    rag_query = st.text_input("Ask a question for generated answer...", key="rag_input")
+    if st.button("Generate Answer", type="primary", key="rag_btn"):
+        if not rag_query.strip():
+            st.warning("Please enter a question.")
+        else:
+            with st.spinner("Generating answer..."):
+                rag_resp = generate_rag_answer(rag_query, top_k=3, fixtures=fixtures)
+                ans = rag_resp["generated_answer"]
+                docs = rag_resp["source_documents"]
+                
+                st.markdown(f'<div style="font-size:1.1rem; padding:15px; border-radius:8px; background:#f8fafc; border:1px solid #e2e8f0; color:#0f172a; margin-bottom:20px;">{ans}</div>', unsafe_allow_html=True)
+                
+                if len(docs) == 0 or "I could not find a precise answer" in ans:
+                    st.warning("Low confidence: answer may be incomplete.")
+                
+                st.divider()
+                st.markdown("#### Sources used:")
+                for doc in docs:
+                    q = doc.metadata.get("question", "")
+                    a = doc.page_content
+                    st.markdown(
+                        '<div style="margin-bottom:10px; padding:10px; border-left:3px solid #6366f1; background:#ffffff; border-radius: 0 4px 4px 0; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">'
+                        f'<strong style="color:#1e293b;">Q: {q}</strong><br>'
+                        f'<span style="color:#475569; font-size:0.9rem;">{a[:150]}...</span>'
+                        '</div>',
+                        unsafe_allow_html=True
+                    )

@@ -308,5 +308,32 @@
       "type": "user_added",
       "created_at": 1775224131
     }
+  },
+  {
+    "id": "faq_033",
+    "question": "Can I swap my minor elective after the first two weeks?",
+    "answer": "No. The add/drop period strictly closes at the end of week two. Once the deadline passes, you are locked into your registered electives for the remainder of the semester.",
+    "category": "course",
+    "tags": [
+      "elective",
+      "minor",
+      "add/drop",
+      "deadline"
+    ],
+    "metadata": {
+      "type": "user_added",
+      "created_at": 1775290662
+    }
+  },
+  {
+    "id": "faq_034",
+    "question": "Lock test",
+    "answer": "Testing Windows lock fix.",
+    "category": "course",
+    "tags": [],
+    "metadata": {
+      "type": "user_added",
+      "created_at": 1775291409
+    }
   }
 ]
