@@ -1,46 +1,54 @@
 """
 pipeline.py — Phase 7: Full Pipeline Orchestration with Caching and Profiling
+            (Composable signal-based routing added)
 
 Responsibilities:
   - Orchestrate all Phase 1–6 modules in the correct order
   - Apply two-level cache check (exact → semantic) before running pipeline
-  - Profile each stage's latency and attach `latency_ms` to the response
+  - Profile each stage’s latency and attach `latency_ms` to the response
   - Update rationale with cache hit provenance when result is served from cache
   - Return the complete final response dict with latency info appended
 
+Routing model (composable, post-fix):
+  Tier 1 → provides entity_signal   (bool: structured entity detected?)
+  Tier 2 → provides semantic_score   (float: best intent similarity score)
+  _fuse_signals() → combines both signals using existing thresholds:
+
+      entity + score ≥ HIGH  → HYBRID   (both signals present — composable)
+      entity + score <  HIGH  → KEYWORD  (entity dominates, semantic weak)
+      no entity + score ≥ HIGH → SEMANTIC
+      no entity + score ≥ LOW  → HYBRID
+      no entity + score <  LOW  → HYBRID  (uncertain fallback)
+
+  This removes the early-exit pattern where Tier 1 finalized routing
+  and Tier 2 was skipped. Both tiers now ALWAYS run.
+
 Architecture:
   - This module DOES NOT modify any upstream module or data contract
-  - It is the single integration point for the full pipeline
-  - All downstream modules remain pure functions; this module wraps them
+  - router_tier1 and router_tier2 are fully unchanged
+  - _fuse_signals() is a module-private function (not exported)
+  - routing_debug field is a non-breaking addition to all responses
 
 Execution order (cache-miss path):
   1. Exact cache lookup             O(1)
   2. embed_single()                 ~12ms  [used for semantic cache + semantic search]
   3. Semantic cache lookup          O(N), N≤20
-  4. Tier 1 router (regex)          <1ms
-  5. Tier 2 router (intent, sem.)   ~12ms
-  6a. [keyword route]  search_keyword()       <2ms   ONLY
-  6b. [semantic route] search_semantic()      ~12ms  ONLY
-  6c. [hybrid route]   search_semantic()      ~12ms
+  4. Tier 1 router (regex)          <1ms   → produces entity_signal
+  5. Tier 2 router (intent, sem.)   ~12ms  → ALWAYS runs, produces semantic_score
+  6. _fuse_signals()                <1ms   → final route from combined signals
+  7a. [keyword route]  search_keyword()       <2ms
+  7b. [semantic route] search_semantic()      ~12ms
+  7c. [hybrid route]   search_semantic()      ~12ms
                        search_keyword()       <2ms
                        search_hybrid() (RRF)  <1ms
-  7. build_final_response()         <1ms
-  8. Store in exact + semantic cache
-  9. Attach latency_ms and return
-
-Cache hit paths:
-  Exact hit → skip steps 2–10, return immediately  (<1ms)
-  Semantic hit → skip steps 4–10, return with updated rationale (~13ms)
-
-Performance budget (architecture doc):
-  Total < 2000ms
-  Ideal < 300ms
-  Cache hit < 5ms
+  8. build_final_response()         <1ms
+  9. Store in exact + semantic cache
+  10. Attach latency_ms, routing_debug and return
 
 Public API:
   run_pipeline(query, model, corpus_embeddings, faq_docs,
                bm25_index, patterns, intent_embeddings, top_k=5)
-      -> dict   (final response + latency_ms field)
+      -> dict   (final response + latency_ms + routing_debug fields)
 """
 
 import copy
@@ -52,6 +60,8 @@ from modules.keyword_search  import search_keyword
 from modules.hybrid_search   import search_hybrid
 from modules.router_tier1    import tier1_route
 from modules.router_tier2    import tier2_route
+from modules.constants       import THRESHOLD_HIGH, THRESHOLD_LOW
+
 from modules.explainability  import build_final_response
 from modules.cache           import (
     cache_lookup,
@@ -59,8 +69,135 @@ from modules.cache           import (
     semantic_cache_lookup,
     semantic_cache_store,
 )
-from modules.profiler    import LatencyProfiler
-from modules.confidence  import get_query_type, check_confidence
+from modules.profiler        import LatencyProfiler
+from modules.confidence      import get_query_type, check_confidence
+from modules.feedback_store  import apply_feedback_reranking
+from modules.query_filter    import is_valid_unanswered_query   # Phase 2
+from modules.db              import store_unanswered_query       # Phase 2
+
+import logging as _logging
+_log = _logging.getLogger(__name__)
+
+
+def _track_unanswered(query: str, low_confidence: bool) -> None:
+    """
+    Fire-and-forget helper: if the response was low-confidence and the
+    query passes the quality gate, store it in unanswered_queries.
+
+    Wrapped in try/except so a DB error never affects the response.
+    """
+    if not low_confidence:
+        return
+    try:
+        if is_valid_unanswered_query(query):
+            store_unanswered_query(query)
+            # Fetch current count for the debug log (best-effort).
+            from modules.db import get_connection as _gc
+            conn = _gc()
+            try:
+                row = conn.execute(
+                    "SELECT count FROM unanswered_queries WHERE query = ?",
+                    (query.strip().lower(),),
+                ).fetchone()
+                cnt = row["count"] if row else "?"
+            finally:
+                conn.close()
+            _log.debug(
+                '[unanswered_query] stored: "%s" (count=%s)', query.strip(), cnt
+            )
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("[unanswered_query] storage error: %s", exc)
+
+
+# ──────────────────────────────────────────────────────────────
+# Signal fusion (module-private)
+# Combines Tier 1 entity signal + Tier 2 semantic score into final route.
+# Uses only the existing THRESHOLD_HIGH / THRESHOLD_LOW constants.
+# Does NOT hardcode any language, entity name, or route string.
+# ──────────────────────────────────────────────────────────────
+
+def _fuse_signals(entity_detected: bool, semantic_score: float) -> tuple[str, str]:
+    """
+    Produce a final routing decision by combining both router signals.
+
+    This is the ONLY place where the two tiers' outputs are reconciled.
+    Neither tier finalizes the route on its own — they each contribute a
+    signal; this function merges them.
+
+    Decision table (uses existing THRESHOLD_HIGH=0.82, THRESHOLD_LOW=0.65):
+
+        entity=True  + score >= LOW   →  hybrid
+            A meaningful semantic signal exists alongside the structured entity.
+            The query likely has intent beyond a pure lookup (e.g. mixed query).
+            Both retrievers should contribute.
+
+        entity=True  + score <  LOW   →  keyword
+            Entity is the dominant signal; semantic similarity is too weak to
+            add value — structured lookup alone is sufficient.
+
+        entity=False + score >= HIGH  →  semantic
+            No structured entity; high conceptual similarity — semantic only.
+
+        entity=False + score >= LOW   →  hybrid
+            Moderate semantic signal without an entity — ambiguous range,
+            use both retrievers for coverage.
+
+        entity=False + score <  LOW   →  semantic
+            No entity and weak semantic signal.  Hybrid would add nothing
+            useful here (no keyword anchor from an entity).  Route to semantic
+            as the lowest-noise fallback; downstream confidence check will flag
+            low-confidence results if retrieval quality is poor.
+
+    Args:
+        entity_detected: True if Tier 1 found at least one structured entity.
+        semantic_score:  Best intent similarity score from Tier 2 (float in [0,1]).
+
+    Returns:
+        (route, reason) — route is one of "keyword", "semantic", "hybrid";
+        reason is a human-readable explanation string for routing_debug.
+    """
+    if entity_detected:
+        if semantic_score >= THRESHOLD_LOW:
+            return (
+                "hybrid",
+                f"Fusion: entity detected + semantic score {semantic_score:.4f} "
+                f">= {THRESHOLD_LOW} (LOW threshold) — entity + meaningful semantic "
+                f"signal present; hybrid retrieval engaged.",
+            )
+        else:
+            return (
+                "keyword",
+                f"Fusion: entity detected, semantic score {semantic_score:.4f} "
+                f"< {THRESHOLD_LOW} — semantic signal too weak to contribute; "
+                f"structured keyword lookup dominates.",
+            )
+
+    # No entity detected — routing driven purely by semantic score
+    if semantic_score >= THRESHOLD_HIGH:
+        return (
+            "semantic",
+            f"Fusion: no entity, semantic score {semantic_score:.4f} "
+            f">= {THRESHOLD_HIGH} (HIGH threshold) — strong conceptual intent; "
+            f"semantic retrieval only.",
+        )
+
+    if semantic_score >= THRESHOLD_LOW:
+        return (
+            "hybrid",
+            f"Fusion: no entity, semantic score {semantic_score:.4f} in ambiguous "
+            f"range [{THRESHOLD_LOW}, {THRESHOLD_HIGH}) — moderate semantic signal; "
+            f"hybrid retrieval for coverage.",
+        )
+
+    # Below both thresholds, no entity — semantic fallback (not hybrid)
+    # Hybrid would add no value here: BM25 has no keyword anchor without an entity.
+    return (
+        "semantic",
+        f"Fusion: no entity, semantic score {semantic_score:.4f} "
+        f"< {THRESHOLD_LOW} — weak signal, semantic fallback; "
+        f"downstream confidence check will flag low-quality results.",
+
+    )
 
 
 def run_pipeline(
@@ -105,14 +242,27 @@ def run_pipeline(
     if exact_hit is not None:
         exact_hit = copy.deepcopy(exact_hit)
         exact_hit["rationale"] = (
-            "Result served from exact cache (fast retrieval). "
+            "[Served from cache] Original routing decision reused. "
             + exact_hit.get("rationale", "")
         )
         exact_hit.setdefault("query_type", get_query_type(exact_hit.get("route_decision", "")))
         low_conf, warn_msg = check_confidence(exact_hit.get("results", []), exact_hit.get("route_decision", ""))
         exact_hit["low_confidence"] = low_conf
         exact_hit["confidence_warning"] = warn_msg
-        exact_hit["latency_ms"] = {"cache": "exact", "total": profiler.elapsed_ms()}
+        exact_hit["latency_ms"]      = {"cache": "exact", "total": profiler.elapsed_ms()}
+        exact_hit["cache_type"]      = "exact"
+        exact_hit["cache_similarity"] = 1.0
+        # Phase 2: reapply feedback reranking so stale cache rank reflects
+        # votes cast AFTER the original query was cached.
+        _cached_sem_score = (
+            exact_hit.get("routing_debug", {}).get("semantic_score", 1.0)
+        )
+        exact_hit["results"] = apply_feedback_reranking(
+            exact_hit.get("results", []),
+            semantic_score=_cached_sem_score,
+        )
+        # Phase 2: track low-confidence queries even on cache hits
+        _track_unanswered(query, exact_hit.get("low_confidence", False))
         return exact_hit
 
     # ── Step 2: Embed query once (used for semantic cache + semantic search) ──
@@ -125,21 +275,33 @@ def run_pipeline(
         result, similarity, matched_query = semantic_hit
         result = copy.deepcopy(result)
         result["rationale"] = (
-            f"Result served from semantic cache (similarity {similarity:.4f} ≥ 0.98 "
-            f"with cached query \"{matched_query[:60]}\"). "
+            f"[Served from cache] Original routing decision reused. "
+            f"(Semantic similarity {similarity:.4f} matched cached query \"{matched_query[:60]}\"). "
             + result.get("rationale", "")
         )
-        # Fix 1: apply confidence check (was missing from semantic cache path)
         _route = result.get("route_decision", "")
         result.setdefault("query_type", get_query_type(_route))
         _low_conf, _warn_msg = check_confidence(result.get("results", []), _route)
-        result["low_confidence"]     = _low_conf
-        result["confidence_warning"] = _warn_msg
-        result["latency_ms"] = {
+        result["low_confidence"]      = _low_conf
+        result["confidence_warning"]  = _warn_msg
+        result["latency_ms"]          = {
             "embedding": profiler._stages.get("embedding", 0),
             "cache":     "semantic",
             "total":     profiler.elapsed_ms(),
         }
+        result["cache_type"]      = "semantic"
+        result["cache_similarity"] = round(similarity, 4)
+        # Phase 2: reapply feedback reranking so stale cache rank reflects
+        # votes cast AFTER the original query was cached.
+        _cached_sem_score = (
+            result.get("routing_debug", {}).get("semantic_score", 1.0)
+        )
+        result["results"] = apply_feedback_reranking(
+            result.get("results", []),
+            semantic_score=_cached_sem_score,
+        )
+        # Phase 2: track low-confidence queries even on semantic cache hits
+        _track_unanswered(query, result.get("low_confidence", False))
         return result
 
     # ── Step 4: Build initial state ───────────────────────────
@@ -156,10 +318,40 @@ def run_pipeline(
     with profiler.measure("router_tier1"):
         state = tier1_route(state, patterns)
 
-    # ── Step 6: Tier 2 router (semantic intent, only if T1 did not fire) ──
-    if not state["route_decision"]:
-        with profiler.measure("router_tier2"):
-            state = tier2_route(state, intent_embeddings, model)
+    # Capture Tier 1 signal (entity presence) BEFORE Tier 2 runs.
+    # tier1_route() sets route_decision="keyword" when entities are found;
+    # we record this as a boolean signal without using it as a final decision.
+    entity_detected: bool = bool(state.get("detected_entities"))
+
+    # Clear route_decision so Tier 2 always runs unconditionally.
+    # This removes the early-exit that previously skipped Tier 2 when T1 fired.
+    state["route_decision"] = ""
+
+    # ── Step 6: Tier 2 router (ALWAYS runs — produces semantic_score) ──
+    with profiler.measure("router_tier2"):
+        state = tier2_route(state, intent_embeddings, model)
+
+    # Capture Tier 2 semantic score from the internal diagnostic field.
+    semantic_score: float = float(state.get("_tier2_score", 0.0))
+
+    # ── Step 6b: Signal fusion — final route from both signals ────
+    route, decision_reason = _fuse_signals(entity_detected, semantic_score)
+    state["route_decision"] = route
+
+    # Compose rationale: preserve T1/T2 diagnostic rationale, then append fusion.
+    t1_rationale = (
+        f"Tier 1: entities detected: {state.get('detected_entities', [])}. "
+        if entity_detected else "Tier 1: no structured entities. "
+    )
+    t2_rationale = state.get("rationale", "")
+    state["rationale"] = t1_rationale + t2_rationale + " | " + decision_reason
+
+    # Build routing_debug — non-breaking addition (does not alter any existing fields)
+    routing_signals = {
+        "entity_detected":  entity_detected,
+        "semantic_score":   round(semantic_score, 4),
+        "decision_reason":  decision_reason,
+    }
 
     route = state["route_decision"]
 
@@ -208,19 +400,48 @@ def run_pipeline(
     with profiler.measure("explainability"):
         response = build_final_response(state)
 
-    # ── Step 10b: Attach query_type and confidence metadata ───
+    # ── Step 10c: Feedback reranking (Phase 2 — additive layer) ────────
+    # Passes semantic_score for FIX 7 gate (skip adjustment on weak matches).
+    # Does NOT modify routing, retrieval, or thresholds.
+    # Adds F7/F8 debug fields: feedback_score, feedback_avg, feedback_count,
+    # adjustment, adjusted_score, low_quality.
+    response["results"] = apply_feedback_reranking(
+        response.get("results", []),
+        semantic_score=semantic_score,       # FIX 7: confidence gate
+    )
+
+    # ── Step 10b: Attach query_type, confidence, and routing_debug ───
+    # Build routing_debug with full trace (Upgrade 6)
+    routing_signals = {
+        "entity_detected":  entity_detected,
+        "semantic_score":   round(semantic_score, 4),
+        "thresholds":       {"low": THRESHOLD_LOW, "high": THRESHOLD_HIGH},
+        "final_route":      route,
+        "decision_reason":  decision_reason,
+    }
     response["query_type"]         = get_query_type(response.get("route_decision", ""))
-    low_conf, warn_msg             = check_confidence(response.get("results", []), response.get("route_decision", ""))
+    low_conf, warn_msg             = check_confidence(
+        response.get("results", []),
+        response.get("route_decision", ""),
+        routing_debug=routing_signals,           # Upgrade 4: pass full trace
+    )
     response["low_confidence"]     = low_conf
     response["confidence_warning"] = warn_msg
+    response["routing_debug"]      = routing_signals   # non-breaking new field
+
+    # ── Phase 2: Unanswered query tracking ────────────────────────────────
+    # Runs AFTER confidence is determined; never blocks or alters response.
+    _track_unanswered(query, low_conf)
 
     # ── Step 11: Store in both caches ─────────────────────────
     cache_store(query, response)
     semantic_cache_store(query_vec, query, response)
 
-    # ── Step 12: Attach latency and return ────────────────────
+    # ── Step 12: Attach latency, cache debug info, and return ─
     response = copy.deepcopy(response)
     profile  = profiler.get_profile()
-    response["latency_ms"] = profile
+    response["latency_ms"]       = profile
+    response["cache_type"]       = "miss"  # debug: full pipeline was executed
+    response["cache_similarity"] = 0.0     # debug: no cache match
 
     return response

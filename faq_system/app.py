@@ -17,8 +17,16 @@ New features vs v2:
   F8  FAQRetriever class used by comparison tab
 """
 
-import os, sys, json, re, textwrap
+import os, sys, json, re, textwrap, logging
 import streamlit as st
+
+# Enable debug logging so feedback_reranking trace is visible in terminal.
+# Remove or set to INFO once visible ranking is confirmed.
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+    datefmt="%H:%M:%S",
+)
 
 # ── Page config (must be first Streamlit call) ────────────────
 st.set_page_config(
@@ -28,6 +36,20 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+
+# Import shared threshold constants (Issue 2 fix — single source of truth)
+from modules.constants import THRESHOLD_HIGH, THRESHOLD_LOW
+
+# Phase 1: Auth + DB (additive — no pipeline changes)
+from modules.auth import (
+    init_session, login_user, logout_user, register_user,
+    get_current_user, is_authenticated, is_admin, ensure_default_admin,
+)
+
+# Initialise DB tables and Streamlit session keys on every rerun.
+init_session()
+ensure_default_admin()   # creates admin/admin123 on first launch
+
 
 # ═══════════════════════════════════════════════════════════════
 # CSS
@@ -121,7 +143,20 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
                 color:#64748b; line-height:1.5; margin-bottom:2px; }
 .expl-checkmark { color:#22c55e; font-weight:700; flex-shrink:0; }
 
-/* RATIONALE */
+/* FEEDBACK BAR */
+.feedback-bar { display:flex; align-items:center; gap:8px; padding:6px 0 4px;
+                border-top:1px dashed #e2e8f0; margin-top:4px; flex-wrap:wrap; }
+.feedback-label { font-size:0.67rem; color:#94a3b8; font-weight:600;
+                  text-transform:uppercase; letter-spacing:0.6px; }
+.fb-score-pos   { color:#16a34a; font-weight:700; font-size:0.72rem; }
+.fb-score-neg   { color:#dc2626; font-weight:700; font-size:0.72rem; }
+.fb-score-neu   { color:#94a3b8; font-weight:700; font-size:0.72rem; }
+.low-quality-flag { display:inline-flex; align-items:center; gap:4px;
+                    background:#fef2f2; border:1.5px solid #fca5a5;
+                    border-radius:6px; padding:2px 9px;
+                    font-size:0.68rem; color:#dc2626; font-weight:700; }
+
+
 .rationale-box { background:#f8fafc; border:1px solid #e2e8f0; border-left:4px solid #6366f1;
                  border-radius:10px; padding:12px 16px; font-size:0.86rem; color:#374151;
                  line-height:1.8; margin-bottom:18px; }
@@ -172,11 +207,20 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 .manage-faq-q { font-weight:700; color:#0f172a; font-size:0.9rem; margin-bottom:3px; }
 .manage-faq-meta { font-size:0.72rem; color:#94a3b8; }
 
-/* SIDEBAR — always expanded, collapse button hidden */
-[data-testid="stSidebarCollapsedControl"] { display: none !important; }
-[data-testid="collapsedControl"]          { display: none !important; }
-button[kind="header"]                     { display: none !important; }
-section[data-testid="stSidebar"] { min-width: 220px !important; }
+
+/* SIDEBAR — force open and ensure toggle arrow is always visible */
+section[data-testid="stSidebar"] {
+    min-width: 280px !important;
+    width: 280px !important;
+    transform: translateX(0) !important;
+    visibility: visible !important;
+}
+/* Always show the sidebar toggle arrow */
+button[data-testid="baseButton-header"],
+[data-testid="collapsedControl"] {
+    display: block !important;
+    visibility: visible !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -233,25 +277,24 @@ FAQ_CATEGORIES = ["course", "exam", "hostel", "fees", "scholarship",
 # ═══════════════════════════════════════════════════════════════
 @st.cache_resource(show_spinner=False)
 def load_pipeline_fixtures():
+    from modules.db import get_all_faqs
     from modules.embedder        import load_embedding_model, load_and_embed_faqs
     from modules.keyword_search  import build_bm25_index
     from modules.router_tier1    import load_regex_patterns
     from modules.router_tier2    import load_intent_exemplars, embed_intents
     from modules.embedding_store import load_embeddings, save_embeddings
 
-    FAQS_PATH      = os.path.join("data", "faqs.json")
     PATTERNS_PATH  = os.path.join("config", "regex_patterns.json")
     EXEMPLARS_PATH = os.path.join("data", "intent_exemplars.json")
 
-    with open(FAQS_PATH) as f:
-        faq_docs = json.load(f)
+    faq_docs = get_all_faqs()
 
     model = load_embedding_model()
 
     # Feature 6: load from disk if available, otherwise compute + save
     corpus_embeddings = load_embeddings()
     if corpus_embeddings is None:
-        _, corpus_embeddings = load_and_embed_faqs(FAQS_PATH, model)
+        _, corpus_embeddings = load_and_embed_faqs(faq_docs, model)
         save_embeddings(corpus_embeddings)
 
     bm25_index, _     = build_bm25_index(faq_docs)
@@ -372,13 +415,14 @@ def render_sidebar(active_response=None):
         )
 
     # ── Route legend ────────────────────────────────────────────
-    st.markdown("""
+    st.markdown(f"""
     <div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:1.8px;color:#94a3b8;margin-bottom:7px;">Route Logic</div>
     <div class="legend-row"><div class="legend-dot" style="background:#3b82f6;"></div><span><b style="color:#1d4ed8">Keyword</b> — course codes (Tier 1)</span></div>
-    <div class="legend-row"><div class="legend-dot" style="background:#22c55e;"></div><span><b style="color:#15803d">Semantic</b> — similarity ≥ 0.82 (Tier 2)</span></div>
-    <div class="legend-row"><div class="legend-dot" style="background:#a855f7;"></div><span><b style="color:#6d28d9">Hybrid</b> — 0.65–0.82, RRF fusion</span></div>
+    <div class="legend-row"><div class="legend-dot" style="background:#22c55e;"></div><span><b style="color:#15803d">Semantic</b> — similarity ≥ {THRESHOLD_HIGH} (Tier 2)</span></div>
+    <div class="legend-row"><div class="legend-dot" style="background:#a855f7;"></div><span><b style="color:#6d28d9">Hybrid</b> — {THRESHOLD_LOW}–{THRESHOLD_HIGH}, RRF fusion</span></div>
     <div class="legend-row"><div class="legend-dot" style="background:#d946ef;"></div><span><b style="color:#86198f">Cached</b> — exact or semantic hit</span></div>
     """, unsafe_allow_html=True)
+
 
     st.markdown("---")
 
@@ -564,7 +608,115 @@ def render_result_card(result: dict, is_top: bool = False):
         st.markdown(html, unsafe_allow_html=True)
 
 
-def render_results(results: list[dict]):
+def render_feedback_buttons(result: dict, query: str, route: str) -> None:
+    """
+    Render 👍 / 👎 / 🚫 feedback buttons below a result card (Feature 1).
+    Clicking any button:
+      - Persists the event via store_feedback()          (Feature 2)
+      - Refreshes, showing a confirmation + live score   (Feature 3)
+    Low-quality flag (Feature 5) and adjusted-score debug (Feature 7)
+    are also surfaced here.
+    """
+    faq_id = result.get("faq_id", "")
+    if not faq_id:
+        return
+
+    # Unique per-FAQ-per-query key so state is isolated across results.
+    fb_done_key = f"fb_done_{faq_id}_{abs(hash(query))}"
+
+    # ── Feature 5: low-quality flag ───────────────────────────
+    if result.get("low_quality"):
+        st.markdown(
+            '<div class="low-quality-flag">⚠️ Frequently marked unhelpful</div>',
+            unsafe_allow_html=True,
+        )
+
+    # ── FIX 8: extended debug caption ─────────────────────────
+    adj      = result.get("adjusted_score")
+    orig     = result.get("score", 0.0)
+    if adj is not None and abs(adj - orig) > 1e-9:
+        fb_avg   = result.get("feedback_avg", 0.0)
+        fb_count = result.get("feedback_count", 0)
+        fb_adj   = result.get("adjustment", 0.0)
+        st.caption(
+            f"🔧 Feedback-adjusted: **{adj:.4f}** "
+            f"(original {orig:.4f} · avg {fb_avg:+.3f} × {fb_count} vote"
+            f"{'s' if fb_count != 1 else ''} · Δ {fb_adj:+.4f})"
+        )
+
+    # ── Feature 1 + 3: show buttons or confirmation ───────────
+    if st.session_state.get(fb_done_key):
+        agg   = get_aggregated_scores()
+        score = agg.get(faq_id, {}).get("score", 0)
+        count = agg.get(faq_id, {}).get("count", 0)
+        sc_cls = (
+            "fb-score-pos" if score > 0
+            else "fb-score-neg" if score < 0
+            else "fb-score-neu"
+        )
+        st.markdown(
+            f'<div class="feedback-bar">'
+            f'<span class="feedback-label">✅ Feedback recorded</span>'
+            f'&nbsp;<span class="{sc_cls}">'
+            f'score {score:+d} &middot; {count} vote{"s" if count != 1 else ""}'
+            f'</span></div>',
+            unsafe_allow_html=True,
+        )
+
+        # Feature 6: suggested tags (only when negative feedback exists)
+        suggested = get_suggested_tags(faq_id)
+        if suggested:
+            tags_html = " ".join(
+                f'<span class="tag-chip" style="background:#fef2f2;color:#dc2626;border-color:#fca5a5">'
+                f'{t}</span>'
+                for t in suggested
+            )
+            st.markdown(
+                f'<div style="margin-top:4px;font-size:0.7rem;color:#94a3b8">'
+                f'💡 Suggested tags: {tags_html}</div>',
+                unsafe_allow_html=True,
+            )
+        return
+
+    # Buttons row —
+    c_lbl, c_up, c_dn, c_not, c_pad = st.columns([2.5, 0.55, 0.55, 1.5, 4])
+    with c_lbl:
+        st.markdown(
+            '<div style="font-size:0.68rem;color:#94a3b8;padding-top:5px;'
+            'font-weight:600;text-transform:uppercase;letter-spacing:0.5px">'
+            'Was this helpful?</div>',
+            unsafe_allow_html=True,
+        )
+    with c_up:
+        if st.button(
+            "👍",
+            key=f"fb_up_{faq_id}_{abs(hash(query))}",
+            help="Helpful — this answered my question",
+        ):
+            store_feedback(faq_id, query, route, result.get("score", 0.0), "up")
+            st.session_state[fb_done_key] = True
+            st.rerun()
+    with c_dn:
+        if st.button(
+            "👎",
+            key=f"fb_dn_{faq_id}_{abs(hash(query))}",
+            help="Not what I needed",
+        ):
+            store_feedback(faq_id, query, route, result.get("score", 0.0), "down")
+            st.session_state[fb_done_key] = True
+            st.rerun()
+    with c_not:
+        if st.button(
+            "🚫 Not Helpful",
+            key=f"fb_not_{faq_id}_{abs(hash(query))}",
+            help="Completely unhelpful — wrong topic",
+        ):
+            store_feedback(faq_id, query, route, result.get("score", 0.0), "not_helpful")
+            st.session_state[fb_done_key] = True
+            st.rerun()
+
+
+def render_results(results: list[dict], query: str = "", route: str = ""):
     if not results:
         st.warning("No documents retrieved for this query.")
         return
@@ -576,6 +728,8 @@ def render_results(results: list[dict]):
     )
     for i, r in enumerate(results):
         render_result_card(r, is_top=(i == 0))
+        if query:                                     # feedback buttons (Phase 2)
+            render_feedback_buttons(r, query, route)
 
 
 def render_compare_column(results: list[dict], label: str, css_cls: str):
@@ -623,12 +777,150 @@ def render_compare_column(results: list[dict], label: str, css_cls: str):
 
 
 # ═══════════════════════════════════════════════════════════════
+# LOGIN PAGE  (Phase 1 — additive)
+# ═══════════════════════════════════════════════════════════════
+
+def render_login_page() -> None:
+    """
+    Full-page login / register UI shown to unauthenticated visitors.
+    On successful login st.session_state is updated and st.rerun() is called,
+    which causes the rest of the app to render the main UI.
+    """
+    # Centre the card
+    _, col, _ = st.columns([1, 2, 1])
+    with col:
+        st.markdown("""
+        <div style="background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);
+                    border-radius:20px;padding:40px 36px 32px;margin-top:60px;
+                    box-shadow:0 20px 60px rgba(99,102,241,0.35);">
+            <div style="text-align:center;margin-bottom:28px;">
+                <div style="font-size:2.8rem;margin-bottom:8px;">&#127891;</div>
+                <div style="font-size:1.55rem;font-weight:800;color:#fff;
+                            letter-spacing:-0.5px;">Semantic FAQ Router</div>
+                <div style="font-size:0.82rem;color:rgba(255,255,255,0.75);
+                            margin-top:4px;">University Knowledge Base System</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
+
+        # Tab switcher: Login | Register
+        login_tab, reg_tab = st.tabs(["Sign In", "Create Account"])
+
+        # ── Login tab ──────────────────────────────────────────
+        with login_tab:
+            with st.form("login_form", clear_on_submit=False):
+                st.markdown("#### Welcome back")
+                uname = st.text_input(
+                    "Username", placeholder="Enter your username",
+                    key="login_username"
+                )
+                pwd = st.text_input(
+                    "Password", type="password",
+                    placeholder="Enter your password",
+                    key="login_password"
+                )
+                submitted = st.form_submit_button(
+                    "Sign In →", use_container_width=True, type="primary"
+                )
+
+            if submitted:
+                if not uname or not pwd:
+                    st.error("Please enter both username and password.")
+                else:
+                    try:
+                        user = login_user(uname, pwd)
+                        st.success(
+                            f"Welcome, **{user['username']}**! "
+                            f"({'Admin' if user['role'] == 'admin' else 'User'} account)"
+                        )
+                        st.rerun()
+                    except ValueError as exc:
+                        st.error(str(exc))
+
+        # ── Register tab ───────────────────────────────────────
+        with reg_tab:
+            with st.form("register_form", clear_on_submit=True):
+                st.markdown("#### Create account")
+                new_uname = st.text_input(
+                    "Username", placeholder="Choose a username",
+                    key="reg_username"
+                )
+                new_pwd = st.text_input(
+                    "Password", type="password",
+                    placeholder="Min. 6 characters",
+                    key="reg_password"
+                )
+                new_pwd2 = st.text_input(
+                    "Confirm Password", type="password",
+                    placeholder="Repeat password",
+                    key="reg_password2"
+                )
+                reg_submitted = st.form_submit_button(
+                    "Create Account", use_container_width=True, type="primary"
+                )
+
+            if reg_submitted:
+                if new_pwd != new_pwd2:
+                    st.error("Passwords do not match.")
+                else:
+                    try:
+                        register_user(new_uname, new_pwd, role="user")
+                        st.success(
+                            "Account created! Switch to **Sign In** to log in."
+                        )
+                    except ValueError as exc:
+                        st.error(str(exc))
+
+        st.markdown(
+            "<p style='text-align:center;font-size:0.72rem;color:#94a3b8;"
+            "margin-top:20px;'>Default admin credentials on first launch: "
+            "<code>admin / admin123</code></p>",
+            unsafe_allow_html=True,
+        )
+
+
+# ═══════════════════════════════════════════════════════════════
 # PAGE LAYOUT
 # ═══════════════════════════════════════════════════════════════
 
-# ── Sidebar ────────────────────────────────────────────────────
+# ── Auth gate — show login page if not authenticated ──────────
+if not is_authenticated():
+    render_login_page()
+    st.stop()   # halt further rendering; rerun() after login shows main UI
+
+# ── Session header (shown when logged in) ──────────────────────
+_cur_user = get_current_user()
 with st.sidebar:
-    sel_categories, sel_tags_filter = render_sidebar(st.session_state.response)
+    st.markdown(
+        f"<div style='background:rgba(99,102,241,0.12);border:1px solid "
+        f"rgba(99,102,241,0.3);border-radius:10px;padding:10px 14px;"
+        f"margin-bottom:12px;font-size:0.82rem;'>"
+        f"<span style='font-weight:700;color:#6366f1;'>"
+        f"{'&#9654; Admin' if _cur_user['role'] == 'admin' else '&#128100; User'}</span>"
+        f"&nbsp;&nbsp;<span style='color:#475569;'>{_cur_user['username']}</span>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+    if st.button("Sign Out", key="btn_logout", use_container_width=True):
+        logout_user()
+        st.rerun()
+
+    # Phase 3: Admin dashboard navigation (admin role only)
+    if _cur_user["role"] == "admin":
+        st.markdown("---")
+        st.markdown(
+            "<div style='font-size:0.75rem;color:#94a3b8;font-weight:600;"
+            "text-transform:uppercase;letter-spacing:0.05em;"
+            "margin-bottom:6px;'>Admin</div>",
+            unsafe_allow_html=True,
+        )
+        st.session_state.setdefault("show_admin", False)
+        _lbl = "🔒 Exit Admin View" if st.session_state.show_admin else "📊 Admin Dashboard"
+        if st.button(_lbl, key="btn_admin_dash", use_container_width=True):
+            st.session_state.show_admin = not st.session_state.show_admin
+            st.rerun()
 
 # ── Page header ────────────────────────────────────────────────
 st.markdown("""
@@ -646,6 +938,8 @@ st.markdown("""
         <span class="phase-pill">F1 · FAQ CRUD</span>
         <span class="phase-pill">F2 · Compare</span>
         <span class="phase-pill">F6 · Embed Store</span>
+        <span class="phase-pill">🌐 Multilingual</span>
+        <span class="phase-pill" style="background:rgba(249,115,22,0.25);border-color:rgba(249,115,22,0.5)">💬 Feedback</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -655,18 +949,41 @@ with st.spinner("⏳ Loading embedding model..."):
     fixtures = load_pipeline_fixtures()
 
 model, corpus_embeddings, faq_docs, bm25_index, patterns, intent_embeddings = fixtures
-from modules.pipeline    import run_pipeline
-from modules.comparison  import compare_retrieval
-from modules.faq_manager import load_faqs, add_faq, edit_faq, delete_faq, get_categories
-from modules.rag_demo    import generate_rag_answer
+from modules.pipeline      import run_pipeline
+from modules.comparison    import compare_retrieval
+from modules.faq_manager   import load_faqs, add_faq, edit_faq, delete_faq, get_categories
+from modules.rag_demo      import generate_rag_answer
+from modules.multilingual  import process_query as multilingual_process_query
+from modules.feedback_store import (
+    store_feedback,
+    get_aggregated_scores,
+    get_feedback_score,
+    get_suggested_tags,
+)
 
 PIPELINE_ARGS = dict(
     model=model, corpus_embeddings=corpus_embeddings, faq_docs=faq_docs,
     bm25_index=bm25_index, patterns=patterns, intent_embeddings=intent_embeddings, top_k=5,
 )
 
+# ── Sidebar (must come AFTER fixtures so faq_manager is importable) ──────────
+# Guard: on first load these keys don't exist yet — render_sidebar needs them.
+st.session_state.setdefault("response", None)
+st.session_state.setdefault("pending_query", "")
+with st.sidebar:
+    sel_categories, sel_tags_filter = render_sidebar(st.session_state.response)
+
 # ═══════════════════════════════════════════════════════════════
-# TABS
+# ADMIN DASHBOARD (Phase 3 — admin only, hides normal tabs)
+# ═══════════════════════════════════════════════════════════════
+from modules.admin_dashboard import render_admin_dashboard
+
+if _cur_user["role"] == "admin" and st.session_state.get("show_admin", False):
+    render_admin_dashboard()
+    st.stop()   # do not render user tabs when dashboard is active
+
+# ═══════════════════════════════════════════════════════════════
+# TABS  (normal user + admin when dashboard is closed)
 # ═══════════════════════════════════════════════════════════════
 tab_search, tab_compare, tab_manage, tab_rag = st.tabs([
     "🔍 Search", "⚖️ Compare", "📋 Manage FAQs", "🤖 RAG Answer"
@@ -698,7 +1015,18 @@ with tab_search:
     if search_clicked and query.strip():
         with st.spinner("🔍 Running pipeline..."):
             try:
-                resp = run_pipeline(query.strip(), **PIPELINE_ARGS)
+                # ── Multilingual pre-processing (Phase 1 improvement) ──
+                query_data      = multilingual_process_query(query.strip())
+                processed_query = query_data["processed_query"]
+
+                # Core pipeline — receives English query (unchanged API)
+                resp = run_pipeline(processed_query, **PIPELINE_ARGS)
+
+                # Attach multilingual metadata to response (non-breaking)
+                resp["original_query"] = query_data["original_query"]
+                resp["language"]       = query_data["language"]
+                resp["translated"]     = query_data["translated"]
+
             except Exception as e:
                 st.error(f"Pipeline error: {e}")
                 st.stop()
@@ -727,23 +1055,41 @@ with tab_search:
         </div>
         """, unsafe_allow_html=True)
     else:
-        lms        = response.get("latency_ms", {})
-        cache_type = lms.get("cache", None)
-        route      = response.get("route_decision", "")
-        query_type = response.get("query_type", "")
+        lms          = response.get("latency_ms", {})
+        cache_type   = response.get("cache_type", "miss")   # new top-level field
+        cache_sim    = response.get("cache_similarity", 0.0) # new: cosine score for semantic hits
+        route        = response.get("route_decision", "")
+        query_type   = response.get("query_type", "")
+
+        # ── Multilingual translation badge (Phase 1 improvement) ──────
+        _translated = response.get("translated", False)
+        _lang       = response.get("language", "en")
+        _orig_q     = response.get("original_query", "")
+        if _translated:
+            st.info(
+                f"🌐 **Translated from** `{_lang}` **→ English** "
+                f"*(original: \u201c{_orig_q[:80]}{'...' if len(_orig_q) > 80 else ''}\u201d)*"
+            )
+        else:
+            st.caption(f"🌐 Language detected: **English**")
 
         # Feature 3: Low confidence alert
         if response.get("low_confidence"):
             warn = response.get("confidence_warning", "⚠️ Low confidence result.")
             st.warning(warn)
 
-        # Cache banner
-        if cache_type:
-            icon = "⚡" if cache_type == "exact" else "🔮"
+        # Cache banner — uses new top-level cache_type field
+        if cache_type in ("exact", "semantic"):
+            if cache_type == "exact":
+                icon     = "⚡"
+                sim_note = ""
+            else:
+                icon     = "🔮"
+                sim_note = f" &nbsp;·&nbsp; similarity <strong>{cache_sim:.4f}</strong>"
             st.markdown(f"""
             <div class="cache-banner">
-                {icon} <span><strong>Cache Hit</strong> — from <strong>{cache_type}</strong>
-                cache in <strong>{lms.get('total',0):.2f} ms</strong></span>
+                {icon} <span><strong>Cache Hit</strong> — <strong>{cache_type}</strong>
+                cache in <strong>{lms.get('total',0):.2f} ms</strong>{sim_note}</span>
             </div>
             """, unsafe_allow_html=True)
 
@@ -751,7 +1097,7 @@ with tab_search:
         c_route, c_lat = st.columns([0.38, 0.62])
         with c_route:
             st.markdown('<div class="section-label">Routing Decision</div>', unsafe_allow_html=True)
-            render_route_panel(response, cache_type)
+            render_route_panel(response, cache_type if cache_type != "miss" else None)
         with c_lat:
             st.markdown('<div class="section-label">Pipeline Latency Profile</div>', unsafe_allow_html=True)
             render_latency_panel(lms)
@@ -766,11 +1112,16 @@ with tab_search:
         if sel_categories or sel_tags_filter:
             st.caption(f"Showing {len(filtered)} of {len(all_results)} results after filters (category={sel_categories or 'all'}, tags={sel_tags_filter or 'all'})")
 
-        render_results(filtered if (sel_categories or sel_tags_filter) else all_results)
+        render_results(
+            filtered if (sel_categories or sel_tags_filter) else all_results,
+            query=response.get("query", ""),
+            route=response.get("route_decision", ""),
+        )
 
         with st.expander("🔧 Developer View (Raw JSON)", expanded=False):
             st.json({k: v for k, v in response.items() if k != "latency_ms"})
             st.json({"latency_ms": lms})
+
 
 
 # ─────────────────────────────────────────────────────────────

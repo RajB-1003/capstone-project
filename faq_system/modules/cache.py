@@ -1,46 +1,68 @@
 """
 cache.py — Phase 7: LRU Exact Cache + Semantic Near-Duplicate Cache
+           Upgrade 2: Version-aware cache keys
 
 Responsibilities:
   - Exact LRU cache: O(1) lookup/insert using OrderedDict; max 50 entries
   - Semantic cache: dot-product similarity on L2-normalized query embeddings;
-    max 20 entries; threshold 0.98 (near-duplicate queries only)
+    max 20 entries; threshold 0.90 (semantic similarity queries)
+  - Both caches embed CORPUS_VERSION + EMBEDDING_VERSION into keys/metadata
+    so stale entries are silently bypassed when the dataset or model changes
   - Module-level singletons so cache persists for the lifetime of the process
   - All public functions operate on the singletons — callers never touch internals
 
 Design decisions:
-  - Cache ONLY the final build_final_response() output (complete result dict).
-    Partial results (state, BM25 scores, intermediate embeddings) are NOT cached.
-  - Exact cache uses normalized (stripped, lowercased) query string as key so
-    "CS-202 Prerequisites " and "cs-202 prerequisites" both hit the same entry.
-  - Semantic cache uses FIFO eviction (pop index 0) — the oldest entry is
-    removed when the cache is full. This keeps implementation O(N) per store
-    with N ≤ 20 (negligible cost relative to embedding computation).
-  - Semantic cache entries store the original (un-normalized) query string for
-    rationale messages, and a deep copy of the result dict to avoid aliasing.
-  - Thread safety: not implemented — this is a single-process system.
+  - Exact cache key = sha256(normalized_query + version_tag)[:16] hex string.
+    The full query is still stored for display; the hash is used for lookup only.
+  - Semantic cache entries carry a version_tag string; mismatched entries are
+    skipped during lookup (treated as misses) without evicting them immediately.
+  - Public API (cache_lookup, cache_store, semantic_cache_lookup,
+    semantic_cache_store, clear_all_caches, cache_stats) is UNCHANGED.
+    Versioning is entirely internal — no caller changes required.
 
 Public API:
   cache_lookup(query)                    -> dict | None
   cache_store(query, result)
-  semantic_cache_lookup(embedding, threshold=0.98)  -> dict | None
+  semantic_cache_lookup(embedding, threshold=0.90)  -> tuple | None
   semantic_cache_store(embedding, query, result)
   clear_all_caches()                     (testing / reset)
   cache_stats()                          -> dict
 """
 
 import copy
+import hashlib
 from collections import OrderedDict
 
 import numpy as np
+
+from modules.constants import CORPUS_VERSION, EMBEDDING_VERSION
 
 
 # ──────────────────────────────────────────────────────────────
 # Configuration
 # ──────────────────────────────────────────────────────────────
-EXACT_CACHE_MAX_SIZE    = 50
-SEMANTIC_CACHE_MAX_SIZE = 20
-SEMANTIC_THRESHOLD_DEFAULT = 0.98
+EXACT_CACHE_MAX_SIZE       = 50
+SEMANTIC_CACHE_MAX_SIZE    = 20
+SEMANTIC_THRESHOLD_DEFAULT = 0.90   # ≥ 0.90 cosine similarity → semantic cache hit
+
+# Current version tag — computed once at import time from constants.
+# Changing CORPUS_VERSION or EMBEDDING_VERSION in constants.py automatically
+# invalidates all existing cache entries on next process start.
+_CACHE_VERSION_TAG: str = f"{CORPUS_VERSION}:{EMBEDDING_VERSION}"
+
+
+def _make_exact_key(query: str) -> str:
+    """
+    Build a version-aware cache key for the exact LRU cache.
+
+    key = sha256(normalized_query + "|" + version_tag)[:16]
+
+    The sha256 prefix is used purely for key uniqueness — the original
+    query is stored separately in the result dict for display purposes.
+    A 16-hex-char prefix (64-bit key space) is collision-free for N ≤ 50.
+    """
+    payload = query.strip().lower() + "|" + _CACHE_VERSION_TAG
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 
 # ──────────────────────────────────────────────────────────────
@@ -54,7 +76,8 @@ class _LRUCache:
     Strategy:
         - On lookup HIT:  move key to end (most recently used).
         - On store:       insert at end; if over capacity, pop first (LRU).
-        - Normalisation:  key = query.strip().lower() for case/space tolerance.
+        - Key:            sha256(normalized_query + version_tag)[:16]
+                          so entries from a different dataset/model never match.
 
     Complexity:
         - lookup:  O(1)
@@ -64,18 +87,14 @@ class _LRUCache:
 
     def __init__(self, max_size: int = EXACT_CACHE_MAX_SIZE):
         self._store: OrderedDict[str, dict] = OrderedDict()
-        self.max_size = max_size
-        self.hits   = 0
-        self.misses = 0
-        self.stores = 0
+        self.max_size  = max_size
+        self.hits      = 0
+        self.misses    = 0
+        self.stores    = 0
         self.evictions = 0
 
-    @staticmethod
-    def _normalize(query: str) -> str:
-        return query.strip().lower()
-
     def lookup(self, query: str) -> dict | None:
-        key = self._normalize(query)
+        key = _make_exact_key(query)   # version-aware key
         if key not in self._store:
             self.misses += 1
             return None
@@ -85,7 +104,7 @@ class _LRUCache:
         return copy.deepcopy(self._store[key])   # deep copy — never return reference
 
     def store(self, query: str, result: dict) -> None:
-        key = self._normalize(query)
+        key = _make_exact_key(query)   # version-aware key
         if key in self._store:
             self._store.move_to_end(key)
             self._store[key] = copy.deepcopy(result)
@@ -113,21 +132,23 @@ class _LRUCache:
 
 class _SemanticCache:
     """
-    Vector similarity cache for near-duplicate query detection.
+    Vector similarity cache for semantic query matching.
 
-    Each entry stores: (L2-normalized embedding, query_str, result_dict).
+    Each entry stores: (L2-normalized embedding, query_str, result_dict,
+                        version_tag).
 
     Lookup:
-        Stack all stored embeddings into (N, 384) matrix.
-        Compute dot products against query_vec → (N,) similarities.
+        Filter entries to current version_tag first.
+        Stack remaining embeddings into (M, 384) matrix.
+        Compute dot products against query_vec → (M,) similarities.
         If max similarity ≥ threshold → return cached result.
 
     Eviction: FIFO — oldest entry (index 0) removed when full.
 
-    Why threshold = 0.98?
-        0.98 ensures only near-duplicate queries (paraphrases with identical
-        meaning) reuse cached results. Semantically similar-but-different
-        queries (e.g. "hostel fee" vs "hostel rules") won't reach 0.98.
+    Why version_tag check?
+        When CORPUS_VERSION or EMBEDDING_VERSION changes, entries from the
+        previous run are silently skipped without requiring a cache flush.
+        They are evicted naturally via FIFO as new entries are added.
 
     Complexity:
         - lookup:  O(N * D) BLAS matmul, N ≤ 20, D = 384 → negligible
@@ -141,8 +162,8 @@ class _SemanticCache:
     ):
         self.max_size  = max_size
         self.threshold = threshold
-        # Each entry: (embedding: np.ndarray (384,), query: str, result: dict)
-        self._entries: list[tuple[np.ndarray, str, dict]] = []
+        # Each entry: (embedding, query, result, version_tag)
+        self._entries: list[tuple[np.ndarray, str, dict, str]] = []
         self.hits      = 0
         self.misses    = 0
         self.stores    = 0
@@ -155,23 +176,26 @@ class _SemanticCache:
     ) -> tuple[dict, float, str] | None:
         """
         Returns (result_copy, similarity_score, matched_query) or None.
-        Returns a tuple so callers can include the matched query in rationale.
+        Version-mismatched entries are silently skipped.
         """
         effective_threshold = threshold if threshold is not None else self.threshold
-        if not self._entries:
+
+        # Filter to current version only
+        valid_entries = [e for e in self._entries if e[3] == _CACHE_VERSION_TAG]
+        if not valid_entries:
             self.misses += 1
             return None
 
-        # Stack stored embeddings: (N, 384)
-        stored_matrix = np.stack([e[0] for e in self._entries], axis=0)
-        similarities  = stored_matrix @ query_embedding   # (N,), BLAS matmul
+        # Stack valid embeddings: (M, 384)
+        stored_matrix = np.stack([e[0] for e in valid_entries], axis=0)
+        similarities  = stored_matrix @ query_embedding   # (M,), BLAS matmul
         best_idx      = int(np.argmax(similarities))
         best_score    = float(similarities[best_idx])
 
         if best_score >= effective_threshold:
             self.hits += 1
-            matched_query  = self._entries[best_idx][1]
-            matched_result = copy.deepcopy(self._entries[best_idx][2])
+            matched_query  = valid_entries[best_idx][1]
+            matched_result = copy.deepcopy(valid_entries[best_idx][2])
             return matched_result, round(best_score, 4), matched_query
 
         self.misses += 1
@@ -190,6 +214,7 @@ class _SemanticCache:
             embedding.copy().astype(np.float32),   # ensure normalized float32
             query,
             copy.deepcopy(result),
+            _CACHE_VERSION_TAG,                    # version tag for invalidation
         ))
         self.stores += 1
 
@@ -292,6 +317,7 @@ def cache_stats() -> dict:
         dict with exact and semantic cache hit/miss/eviction counts and sizes.
     """
     return {
+        "version": _CACHE_VERSION_TAG,   # corpus:embedding version tag
         "exact": {
             "size":       _exact_cache.size(),
             "max_size":   _exact_cache.max_size,
@@ -302,13 +328,13 @@ def cache_stats() -> dict:
             "keys":       _exact_cache.keys(),
         },
         "semantic": {
-            "size":         _semantic_cache.size(),
-            "max_size":     _semantic_cache.max_size,
-            "threshold":    _semantic_cache.threshold,
-            "hits":         _semantic_cache.hits,
-            "misses":       _semantic_cache.misses,
-            "stores":       _semantic_cache.stores,
-            "evictions":    _semantic_cache.evictions,
+            "size":           _semantic_cache.size(),
+            "max_size":       _semantic_cache.max_size,
+            "threshold":      _semantic_cache.threshold,
+            "hits":           _semantic_cache.hits,
+            "misses":         _semantic_cache.misses,
+            "stores":         _semantic_cache.stores,
+            "evictions":      _semantic_cache.evictions,
             "stored_queries": _semantic_cache.stored_queries(),
         },
     }

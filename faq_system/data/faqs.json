@@ -335,5 +335,19 @@
       "type": "user_added",
       "created_at": 1775291409
     }
+  },
+  {
+    "id": "faq_035",
+    "question": "how to apply for internship outside university",
+    "answer": "You can apply for an internship via the career portal.",
+    "category": "course",
+    "tags": [
+      "internship",
+      "career"
+    ],
+    "metadata": {
+      "type": "user_added",
+      "created_at": 1776769169
+    }
   }
 ]

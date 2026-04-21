@@ -68,3 +68,9 @@ logs/
 build_doc.txt
 doc_content.txt
 Docs/
+
+# Databases and Local Data Logs
+*.sqlite3
+*.db
+*.jsonl
+query_feedback.json

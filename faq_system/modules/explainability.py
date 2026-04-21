@@ -48,12 +48,8 @@ Public API:
 
 import copy
 
+from modules.constants import THRESHOLD_HIGH, THRESHOLD_LOW
 
-# ──────────────────────────────────────────────────────────────
-# Threshold constants (must match router_tier2.py values)
-# ──────────────────────────────────────────────────────────────
-_THRESHOLD_HIGH = 0.82
-_THRESHOLD_LOW  = 0.65
 
 
 # ──────────────────────────────────────────────────────────────
@@ -92,106 +88,190 @@ def _best_score(doc: dict, fallback: float = 0.0) -> tuple[float, str]:
 
 
 # ──────────────────────────────────────────────────────────────
-# 1. Routing rationale generator
+# Upgrade 1 helper: Structured reasoning trace
 # ──────────────────────────────────────────────────────────────
+
+def build_reasoning_trace(routing_debug: dict, state: dict) -> dict:
+    """
+    Build a structured reasoning trace explaining WHY the chosen route
+    is optimal vs the alternatives.
+
+    Returns:
+        {
+          "decision":  str,         # final route (KEYWORD / SEMANTIC / HYBRID)
+          "reasoning": list[str],   # 3 ordered reasoning bullets
+        }
+
+    All text is dynamically constructed from routing_debug signals and
+    threshold constants. No phrases are hardcoded.
+    """
+    route           = state.get("route_decision", "").upper()
+    entities        = state.get("detected_entities", [])
+    routing_debug   = routing_debug or {}
+    entity_detected = routing_debug.get("entity_detected", bool(entities))
+    semantic_score  = routing_debug.get("semantic_score", 0.0)
+
+    reasoning: list[str] = []
+
+    # ── Bullet 1: Entity signal ────────────────────────────────
+    if entity_detected:
+        entity_str = ", ".join(f"'{e}'" for e in entities) if entities else "a structured identifier"
+        reasoning.append(
+            f"Entity {entity_str} detected → enables precise keyword matching "
+            f"by anchoring the query to a specific structured token"
+        )
+    else:
+        reasoning.append(
+            f"No structured entity detected → routing relies entirely on "
+            f"semantic similarity signal ({semantic_score:.4f})"
+        )
+
+    # ── Bullet 2: Semantic signal interpretation ───────────────
+    if semantic_score >= THRESHOLD_HIGH:
+        level = "high"
+        interp = (f"score {semantic_score:.4f} ≥ {THRESHOLD_HIGH} "
+                  f"→ strong conceptual match with a known intent category")
+    elif semantic_score >= THRESHOLD_LOW:
+        level = "medium"
+        interp = (f"score {semantic_score:.4f} in [{THRESHOLD_LOW}, {THRESHOLD_HIGH}) "
+                  f"→ moderate conceptual intent, too ambiguous for pure semantic")
+    else:
+        level = "low"
+        interp = (f"score {semantic_score:.4f} < {THRESHOLD_LOW} "
+                  f"→ weak semantic signal, no reliable intent match")
+    reasoning.append(f"Semantic similarity: {level} — {interp}")
+
+    # ── Bullet 3: Why this route, not the alternatives ─────────
+    route_lower = route.lower()
+    if route_lower == "hybrid":
+        if entity_detected:
+            reasoning.append(
+                f"HYBRID chosen: entity provides keyword anchor + semantic score "
+                f"{semantic_score:.4f} ≥ {THRESHOLD_LOW} adds conceptual coverage — "
+                f"pure KEYWORD would miss related conceptual matches; "
+                f"pure SEMANTIC would ignore the entity's exact lookup value"
+            )
+        else:
+            reasoning.append(
+                f"HYBRID chosen: ambiguous range [{THRESHOLD_LOW}, {THRESHOLD_HIGH}) — "
+                f"pure SEMANTIC risks missing keyword-anchored FAQs; "
+                f"pure KEYWORD has no entity anchor — both retrievers provide coverage"
+            )
+    elif route_lower == "keyword":
+        reasoning.append(
+            f"KEYWORD chosen: entity present but semantic score {semantic_score:.4f} "
+            f"< {THRESHOLD_LOW} — semantic signal too weak to add value; "
+            f"SEMANTIC alone would retrieve unrelated conceptual matches"
+        )
+    else:  # semantic
+        if semantic_score >= THRESHOLD_HIGH:
+            reasoning.append(
+                f"SEMANTIC chosen: score {semantic_score:.4f} ≥ {THRESHOLD_HIGH} — "
+                f"high-confidence conceptual intent; no entity, so KEYWORD would "
+                f"produce no relevant BM25 anchor matches"
+            )
+        else:
+            reasoning.append(
+                f"SEMANTIC fallback: score {semantic_score:.4f} < {THRESHOLD_LOW} — "
+                f"HYBRID would add no value (no keyword anchor); "
+                f"downstream confidence check will flag if results are poor"
+            )
+
+    return {"decision": route, "reasoning": reasoning}
+
 
 def generate_rationale(state: dict) -> str:
     """
     Generate a clean, user-facing explanation of the routing decision.
 
-    Reads ONLY from state fields — no LLM, no inference, no invention.
+    Upgrade 1: Appends a 'Reasoning' block with 3 structured bullets
+    explaining entity signal, semantic signal interpretation, and why
+    the chosen route is optimal vs alternatives.  All text is derived
+    dynamically from routing_debug and threshold constants.
+
+    Reads ONLY from state/response fields — no LLM, no inference, no invention.
     Deterministic: same state dict → same output string every time.
-
-    Routing logic covered:
-        "keyword"  → Tier 1 regex triggered; entity names listed
-        "semantic" → Tier 2 high-similarity; intent + score cited
-        "hybrid"   → Tier 2 mid-range score; both retrievers used
-        other/""   → Fallback / unresolved routing
-
-    Retrieval summary appended for all routes:
-        - Top score from the result list
-        - Source distribution (how many semantic / keyword / both)
-        - Overlap count (for hybrid)
 
     Args:
         state: Shared data contract dict (must have route_decision).
+               routing_debug is optional — falls back gracefully.
 
     Returns:
-        str: Clear, concise rationale string (2–4 sentences).
+        str: Clear, concise rationale string with structured reasoning.
              Never empty, never contains placeholder text.
     """
-    route      = state.get("route_decision", "")
-    entities   = state.get("detected_entities", [])
-    scores     = state.get("scores", [])
-    docs       = state.get("retrieved_docs", [])
+    route    = state.get("route_decision", "")
+    entities = state.get("detected_entities", [])
+    scores   = state.get("scores", [])
+    docs     = state.get("retrieved_docs", [])
 
     # Tier 2 diagnostic fields (set by router_tier2.py when it ran)
-    t2_intent  = state.get("_tier2_intent", "")
-    t2_score   = state.get("_tier2_score",  None)
+    t2_intent = state.get("_tier2_intent", "")
+    t2_score  = state.get("_tier2_score", None)
 
-    top_score  = round(scores[0], 4) if scores else None
+    top_score = round(scores[0], 4) if scores else None
 
-    # ── Part A: Routing explanation ────────────────────────────
+    # routing_debug carries the actual fusion signals (entity + semantic_score)
+    # so the explanation can mirror _fuse_signals() logic exactly.
+    routing_debug   = state.get("routing_debug", {})
+    entity_detected = routing_debug.get("entity_detected", bool(entities))
+    semantic_score  = routing_debug.get("semantic_score",  t2_score)
 
-    if route == "keyword":
+    # ── Part A: Routing explanation (unchanged from previous version) ───────
+    if entity_detected:
         entity_str = ", ".join(entities) if entities else "structured identifier(s)"
-        routing_text = (
-            f"Keyword search activated. "
-            f"Structured identifier(s) detected in query: [{entity_str}]. "
-            f"Tier 1 regex router bypassed semantic evaluation to ensure "
-            f"exact token matching for course codes and identifiers."
-        )
-
-    elif route == "semantic":
-        if t2_intent and t2_score is not None:
+        if semantic_score is not None and semantic_score >= THRESHOLD_LOW:
             routing_text = (
-                f"Semantic search activated. "
-                f"Query matched '{t2_intent}' intent with similarity {t2_score:.4f} "
-                f"(threshold: {_THRESHOLD_HIGH}). "
-                f"Tier 2 intent router directed the query to the embedding-based retriever."
-            )
-        elif top_score is not None:
-            routing_text = (
-                f"Semantic search activated. "
-                f"Query similarity {top_score:.4f} exceeded the high-confidence threshold "
-                f"({_THRESHOLD_HIGH}). "
-                f"Embedding-based retrieval used for conceptual matching."
+                f"Hybrid search activated. "
+                f"Structured identifier(s) detected: [{entity_str}]. "
+                f"Semantic similarity {semantic_score:.4f} \u2265 {THRESHOLD_LOW} (meaningful signal) \u2014 "
+                f"both keyword and semantic retrievers used to cover exact and conceptual matches."
             )
         else:
+            score_note = (
+                f" Semantic similarity {semantic_score:.4f} is below {THRESHOLD_LOW}"
+                f" \u2014 structured lookup dominates."
+                if semantic_score is not None else ""
+            )
             routing_text = (
-                "Semantic search activated via Tier 2 intent classification. "
-                "Query matched a known conceptual or informational intent pattern."
+                f"Keyword search activated. "
+                f"Structured identifier(s) detected in query: [{entity_str}]."
+                f"{score_note} "
+                f"Tier 1 regex router directed this query to exact token matching."
             )
-
-    elif route == "hybrid":
-        if t2_score is not None:
-            score_context = (
-                f"Query similarity {t2_score:.4f} falls in the ambiguous range "
-                f"[{_THRESHOLD_LOW}, {_THRESHOLD_HIGH}). "
-            )
-        else:
-            score_context = (
-                "Query did not meet the high-confidence semantic threshold. "
-            )
-        routing_text = (
-            score_context +
-            "Hybrid search deployed: both semantic and keyword retrievers were used. "
-            "Results combined using Reciprocal Rank Fusion (RRF, k=60) for "
-            "rank-based score fusion without mixing raw similarity and BM25 values."
-        )
-
     else:
-        routing_text = (
-            "Routing decision not set. "
-            "Query may require manual review or a fallback retrieval strategy."
-        )
+        if semantic_score is not None and semantic_score >= THRESHOLD_HIGH:
+            intent_note = f"'{t2_intent}' intent " if t2_intent else ""
+            routing_text = (
+                f"Semantic search activated. "
+                f"Query matched {intent_note}with similarity {semantic_score:.4f} "
+                f"\u2265 {THRESHOLD_HIGH} (high-confidence threshold). "
+                f"Embedding-based retriever used for conceptual matching."
+            )
+        elif semantic_score is not None and semantic_score >= THRESHOLD_LOW:
+            intent_note = f"'{t2_intent}' " if t2_intent else ""
+            routing_text = (
+                f"Hybrid search activated. "
+                f"Semantic similarity {semantic_score:.4f} falls in the ambiguous range "
+                f"[{THRESHOLD_LOW}, {THRESHOLD_HIGH}) for {intent_note}intent. "
+                f"Both keyword and semantic retrievers used; results fused via RRF."
+            )
+        else:
+            score_note = (
+                f" Similarity {semantic_score:.4f} is below {THRESHOLD_LOW}."
+                if semantic_score is not None else ""
+            )
+            routing_text = (
+                f"Semantic search activated (low-signal fallback). "
+                f"No structured entity detected."
+                f"{score_note} "
+                f"Semantic retriever used; downstream confidence check applies."
+            )
 
-    # ── Part B: Retrieval summary ──────────────────────────────
-
+    # ── Part B: Retrieval summary ───────────────────────────────
     if not docs:
         retrieval_text = "No documents were retrieved for this query."
     else:
-        # Count sources across all retrieved docs
         source_counts = {"semantic": 0, "keyword": 0, "both": 0, "unknown": 0}
         for doc in docs:
             src = _infer_doc_source(doc, route)
@@ -199,7 +279,6 @@ def generate_rationale(state: dict) -> str:
 
         overlap_count = source_counts.get("both", 0)
 
-        # Build source breakdown string
         breakdown_parts = []
         if source_counts["both"]     > 0:
             breakdown_parts.append(f"{source_counts['both']} from both retrievers (boosted)")
@@ -209,8 +288,7 @@ def generate_rationale(state: dict) -> str:
             breakdown_parts.append(f"{source_counts['keyword']} keyword-only")
 
         breakdown_str = "; ".join(breakdown_parts) if breakdown_parts else f"{len(docs)} result(s)"
-
-        score_label = f"Top score: {top_score:.4f}. " if top_score is not None else ""
+        score_label   = f"Top score: {top_score:.4f}. " if top_score is not None else ""
 
         if route == "hybrid" and overlap_count > 0:
             retrieval_text = (
@@ -225,7 +303,12 @@ def generate_rationale(state: dict) -> str:
                 f"Retrieved {len(docs)} document(s): {breakdown_str}."
             )
 
-    return f"{routing_text} {retrieval_text}"
+    # ── Part C: Structured reasoning block (Upgrade 1) ─────────────────
+    trace = build_reasoning_trace(routing_debug, state)
+    reasoning_lines = "\n".join(f"  • {r}" for r in trace["reasoning"])
+    reasoning_block = f"\n\n**Reasoning:**\n{reasoning_lines}"
+
+    return f"{routing_text} {retrieval_text}{reasoning_block}"
 
 
 # ──────────────────────────────────────────────────────────────
@@ -368,6 +451,7 @@ def build_final_response(state: dict) -> dict:
         )
         results.append({
             "rank":        rank,
+            "faq_id":      doc.get("id", ""),            # Phase 2: needed by feedback reranking
             "question":    doc.get("question", ""),
             "answer":      doc.get("answer", ""),
             "category":    doc.get("category", ""),

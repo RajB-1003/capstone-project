@@ -1,4 +1,4 @@
-from langchain_wrapper import FAQRetriever
+from modules.langchain_wrapper import SemanticFAQRetriever
 import math
 import subprocess
 
@@ -64,8 +64,16 @@ def generate_rag_answer(query: str, top_k: int = 3, fixtures: tuple = None) -> d
     Retrieves top_k FAQ results and passes them to a generation layer
     to create a single natural-language answer.
     """
+    # Unpack fixtures: (model, corpus_embeddings, faq_docs, bm25_index, patterns, intent_embeddings)
+    model, corpus_embeddings, faq_docs = fixtures[0], fixtures[1], fixtures[2]
+
     # Use existing wrapper to fetch documents
-    retriever = FAQRetriever(top_k=top_k, fixtures=fixtures)
+    retriever = SemanticFAQRetriever(
+        model=model,
+        corpus_embeddings=corpus_embeddings,
+        faq_docs=faq_docs,
+        top_k=top_k,
+    )
     docs = retriever.get_relevant_documents(query)
 
     # Build context string

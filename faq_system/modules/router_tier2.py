@@ -59,14 +59,8 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 
 from modules.embedder import embed_single, embed_texts
+from modules.constants import THRESHOLD_HIGH, THRESHOLD_LOW
 
-
-# ──────────────────────────────────────────────────────────────
-# Routing thresholds (externalized as module constants — not hardcoded in logic)
-# ──────────────────────────────────────────────────────────────
-THRESHOLD_HIGH = 0.82   # >= HIGH  → "semantic"  (confident match)
-THRESHOLD_LOW  = 0.65   # >= LOW   → "hybrid"    (ambiguous, use both retrievers)
-                        # <  LOW   → leave route_decision unset (uncertain)
 
 
 # ──────────────────────────────────────────────────────────────

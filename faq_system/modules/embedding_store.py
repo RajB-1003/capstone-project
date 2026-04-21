@@ -39,9 +39,11 @@ def load_embeddings(file_path: str = DEFAULT_PATH) -> "np.ndarray | None":
     Returns None if the file does not exist.
     """
     if os.path.exists(file_path):
-        arr = np.load(file_path, mmap_mode="r")
+        # Removing mmap_mode="r" to prevent WinError 32 (file lock on Windows)
+        # since the cache holds a reference to the array preventing file deletion.
+        arr = np.load(file_path)
         if arr.dtype != np.float32:
-            arr = arr.astype(np.float32)   # legacy files only — forces copy
+            arr = arr.astype(np.float32)
         return arr
     return None
 

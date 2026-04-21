@@ -109,29 +109,28 @@ def embed_single(text: str, model: SentenceTransformer) -> np.ndarray:
 # 4. FAQ corpus loader + embedder
 # ──────────────────────────────────────────────────────────────
 def load_and_embed_faqs(
-    faqs_path: str,
+    faqs_data: str | list[dict],
     model: SentenceTransformer,
 ) -> tuple[list[dict], np.ndarray]:
     """
-    Load FAQ documents from a JSON file and compute their embeddings.
-
-    The function embeds the full "question + answer" string for each FAQ so that
-    both the question phrasing and the answer content contribute to retrieval.
+    Load FAQ documents from a JSON file or direct list and compute embeddings.
 
     Args:
-        faqs_path: Absolute or relative path to faqs.json.
+        faqs_data: Absolute or relative path to faqs.json OR list of FAQ dicts.
         model:     Loaded SentenceTransformer model.
 
     Returns:
-        faq_docs   — list[dict]: original FAQ records from JSON (preserves all fields).
+        faq_docs   — list[dict]
         embeddings — np.ndarray shape (N, EMBEDDING_DIM), float32, L2-normalized.
-                     Row i corresponds to faq_docs[i].
     """
-    with open(faqs_path, "r", encoding="utf-8") as f:
-        faq_docs = json.load(f)
+    if isinstance(faqs_data, str):
+        with open(faqs_data, "r", encoding="utf-8") as f:
+            faq_docs = json.load(f)
+    else:
+        faq_docs = faqs_data
 
     if not faq_docs:
-        raise ValueError(f"FAQ file at '{faqs_path}' is empty.")
+        raise ValueError(f"FAQ data is empty.")
 
     # Embed the concatenation of question + answer — richer signal than Q alone
     texts = [
