@@ -68,9 +68,18 @@ logs/
 build_doc.txt
 doc_content.txt
 Docs/
+mangled_*.txt
+diff_*.txt
 
 # Databases and Local Data Logs
 *.sqlite3
 *.db
 *.jsonl
 query_feedback.json
+
+# Development Scratch Scripts & Backups
+app_backup.py
+apply_*.py
+fix_*.py
+check_*.py
+update_*.py

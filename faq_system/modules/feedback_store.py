@@ -223,10 +223,16 @@ def store_feedback(
     route:    str,
     score:    float,
     feedback: str,
+    user_id:  int | None = None,
 ) -> None:
     """
     Append one feedback event to the append-only JSONL log (FIX 2: F2).
     Also updates the query-level memory (FIX 5).
+
+    Feedback is stored as a **global** signal: all aggregation functions
+    (get_aggregated_scores, apply_feedback_reranking) consider every entry
+    regardless of user_id.  The user_id field is recorded for audit purposes
+    only and does not affect ranking.
 
     Args:
         faq_id:   FAQ identifier (e.g. "faq_001")
@@ -234,6 +240,8 @@ def store_feedback(
         route:    Routing decision ("keyword" | "semantic" | "hybrid")
         score:    Retrieval score for this FAQ in this query
         feedback: "up" | "down" | "not_helpful"
+        user_id:  Optional integer ID of the user who submitted the feedback.
+                  None for guest users or pre-existing log entries.
 
     Raises:
         ValueError: if feedback is not one of the recognised types.
@@ -251,6 +259,7 @@ def store_feedback(
         "route":     route,
         "score":     round(float(score), 4),
         "feedback":  feedback,
+        "user_id":   user_id,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
     with open(FEEDBACK_LOG_PATH, "a", encoding="utf-8") as fh:

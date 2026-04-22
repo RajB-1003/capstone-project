@@ -8,3 +8,5 @@ cachetools>=5.3.0
 # Phase 1 — Multilingual Query Support
 langdetect>=1.0.9
 deep-translator>=1.11.4
+SpeechRecognition>=3.10.0
+streamlit-mic-recorder>=0.0.3

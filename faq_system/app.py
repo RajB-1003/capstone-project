@@ -33,7 +33,7 @@ st.set_page_config(
     page_title="Semantic FAQ Router",
     page_icon="🎓",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
@@ -51,13 +51,13 @@ init_session()
 ensure_default_admin()   # creates admin/admin123 on first launch
 
 
-# ═══════════════════════════════════════════════════════════════
+# â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═
 # CSS
-# ═══════════════════════════════════════════════════════════════
+# â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color: #ffffff; color: #1e293b; font-size: 15px; }
 #MainMenu, footer, header  { visibility: hidden; }
 
 /* PAGE HEADER */
@@ -120,10 +120,10 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 /* RESULT CARDS */
 .result-card { background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:14px;
                padding:18px 20px; margin-bottom:10px; }
-.result-card:hover { box-shadow:0 4px 14px rgba(0,0,0,0.07); border-color:#cbd5e1; }
-.result-card-top { background:linear-gradient(145deg,#fffbeb,#fef9c3);
-                   border:2.5px solid #f59e0b; border-radius:14px; padding:18px 20px; margin-bottom:10px;
-                   box-shadow:0 4px 20px rgba(245,158,11,0.12); }
+.result-card:hover { box-shadow:none; border-color:#94a3b8; }
+.result-card-top { background:#fffbeb;
+                   border:1.5px solid #f59e0b; border-radius:14px; padding:18px 20px; margin-bottom:10px;
+                   box-shadow:none; }
 .best-match-banner { display:inline-flex; align-items:center; gap:4px;
                      background:#f59e0b; color:#fff; border-radius:6px; padding:3px 10px;
                      font-size:0.68rem; font-weight:700; text-transform:uppercase; margin-bottom:8px; }
@@ -136,8 +136,8 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 .score-chip-top { color:#92400e; background:#fde68a; }
 .cat-chip       { font-size:0.65rem; color:#94a3b8; background:#f8fafc; border:1px solid #e2e8f0;
                   border-radius:5px; padding:1px 7px; }
-.result-question { font-size:0.97rem; font-weight:700; color:#0f172a; margin-bottom:5px; line-height:1.4; }
-.result-answer   { font-size:0.85rem; color:#475569; line-height:1.7; margin-bottom:10px; }
+.result-question { font-size:1.1rem; font-weight:700; color:#0f172a; margin-bottom:6px; line-height:1.4; }
+.result-answer   { font-size:0.93rem; color:#475569; line-height:1.7; margin-bottom:10px; }
 .expl-section { border-top:1px solid #e2e8f0; padding-top:8px; }
 .expl-bullet  { display:flex; align-items:flex-start; gap:7px; font-size:0.77rem;
                 color:#64748b; line-height:1.5; margin-bottom:2px; }
@@ -225,9 +225,9 @@ button[data-testid="baseButton-header"],
 """, unsafe_allow_html=True)
 
 
-# ═══════════════════════════════════════════════════════════════
+# â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═
 # CONSTANTS
-# ═══════════════════════════════════════════════════════════════
+# â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═
 ROUTE_CONFIG = {
     "keyword":  {"icon": "🔵", "tier": "Tier 1 — Regex Detection",  "cls": "keyword",  "label": "KEYWORD"},
     "semantic": {"icon": "🟢", "tier": "Tier 2 — Intent Router",    "cls": "semantic", "label": "SEMANTIC"},
@@ -261,8 +261,8 @@ EXAMPLE_QUERIES = {
 }
 STAGE_META = [
     ("embedding",       "🔵 Embedding"),
-    ("router_tier1",    "🔷 Tier 1 Router"),
-    ("router_tier2",    "💠 Tier 2 Router"),
+    ("router_tier1",    "🔸 Tier 1 Router"),
+    ("router_tier2",    "🔶 Tier 2 Router"),
     ("semantic_search", "🟢 Semantic Search"),
     ("keyword_search",  "🔹 Keyword Search"),
     ("hybrid_fusion",   "🟣 RRF Fusion"),
@@ -272,9 +272,9 @@ FAQ_CATEGORIES = ["course", "exam", "hostel", "fees", "scholarship",
                   "placement", "administration", "wellbeing", "other"]
 
 
-# ═══════════════════════════════════════════════════════════════
+# â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═
 # PIPELINE FIXTURE LOADER
-# ═══════════════════════════════════════════════════════════════
+# â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═
 @st.cache_resource(show_spinner=False)
 def load_pipeline_fixtures():
     from modules.db import get_all_faqs
@@ -305,24 +305,24 @@ def load_pipeline_fixtures():
     return model, corpus_embeddings, faq_docs, bm25_index, patterns, intent_embeddings
 
 
-# ═══════════════════════════════════════════════════════════════
+# â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═
 # SESSION STATE INIT
-# ═══════════════════════════════════════════════════════════════
+# =========================================================================
 for key, default in [
     ("response",      None),
-    ("query_history", []),
     ("total_queries", 0),
     ("pending_query", ""),
     ("compare_result", None),
     ("edit_faq_id",   None),
+    ("active_page",   "search"),
 ]:
     if key not in st.session_state:
         st.session_state[key] = default
 
 
-# ═══════════════════════════════════════════════════════════════
+# â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═
 # HELPERS
-# ═══════════════════════════════════════════════════════════════
+# â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═
 def _bold_numbers(text: str) -> str:
     text = re.sub(r'\b(\d+\.\d+)\b', r'<b>\1</b>', text)
     text = re.sub(r'\b(\d+)\s*(ms|result|doc|document|overlap\b)', r'<b>\1</b> \2', text)
@@ -380,233 +380,155 @@ def _apply_filters(results: list[dict],
     return out
 
 
-# ═══════════════════════════════════════════════════════════════
+# â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═
 # RENDER FUNCTIONS
-# ═══════════════════════════════════════════════════════════════
+# â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═â•═
 
-def render_sidebar(active_response=None):
-    from modules.cache      import cache_stats, clear_all_caches
+def render_navbar(active_response=None, cur_user=None):
+    from modules.cache       import cache_stats, clear_all_caches
     from modules.faq_manager import get_categories, get_all_tags
 
-    st.markdown("## 🗺️ System Guide")
+    # ── Navbar ─────────────────────────────────────────────
+    nl, nc, nr = st.columns([2, 6, 2])
+    
+    with nl:
+        st.markdown("<h3 style='margin:0; padding-top:0px; color:#4f46e5; font-weight:800;'>🎓 Univ FAQ</h3>", unsafe_allow_html=True)
 
-    # ── Active route indicator ─────────────────────────────────
-    if active_response:
-        route = active_response.get("route_decision", "")
-        lms   = active_response.get("latency_ms", {})
-        total = lms.get("total", 0)
-        cache = lms.get("cache", "")
-        qtype = active_response.get("query_type", "")
-        icons = {"keyword": "🔵", "semantic": "🟢", "hybrid": "🟣"}
-        arb   = f"arb-{route}" if route in icons else "arb-none"
-        cache_note = f" · {cache} cache" if cache else ""
-        qtype_note = f" · {qtype}" if qtype else ""
-        st.markdown(
-            f'<div class="active-route-badge {arb}">'
-            f'{icons.get(route,"⚡")} <strong>{route.upper()}</strong>'
-            f'<br><span style="font-size:0.7rem;opacity:0.75">{total:.1f} ms{cache_note}{qtype_note}</span>'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
+    if cur_user:
+        role = cur_user.get("role", "user")
+        if role == "admin":
+            nav_items = [
+                ("compare",         "⚖️ Compare"),
+                ("admin_dashboard", "📊 Admin Dashboard"),
+                ("manage_faq",      "⚙️ Manage FAQ"),
+            ]
+        else:
+            nav_items = [
+                ("search", "🔍 Search"),
+                ("rag",    "🤖 RAG"),
+            ]
     else:
-        st.markdown(
-            '<div class="active-route-badge arb-none">No query yet</div>',
-            unsafe_allow_html=True,
-        )
-
-    # ── Route legend ────────────────────────────────────────────
-    st.markdown(f"""
-    <div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:1.8px;color:#94a3b8;margin-bottom:7px;">Route Logic</div>
-    <div class="legend-row"><div class="legend-dot" style="background:#3b82f6;"></div><span><b style="color:#1d4ed8">Keyword</b> — course codes (Tier 1)</span></div>
-    <div class="legend-row"><div class="legend-dot" style="background:#22c55e;"></div><span><b style="color:#15803d">Semantic</b> — similarity ≥ {THRESHOLD_HIGH} (Tier 2)</span></div>
-    <div class="legend-row"><div class="legend-dot" style="background:#a855f7;"></div><span><b style="color:#6d28d9">Hybrid</b> — {THRESHOLD_LOW}–{THRESHOLD_HIGH}, RRF fusion</span></div>
-    <div class="legend-row"><div class="legend-dot" style="background:#d946ef;"></div><span><b style="color:#86198f">Cached</b> — exact or semantic hit</span></div>
-    """, unsafe_allow_html=True)
-
-
-    st.markdown("---")
-
-    # ── Filters (Feature 5) ─────────────────────────────────────
-    st.markdown("### 🔍 Filters")
-    categories = get_categories()
-    all_tags   = get_all_tags()
-    sel_cats   = st.multiselect("Category", categories, key="filter_cats",
-                                placeholder="All categories")
-    sel_tags   = st.multiselect("Tags", all_tags, key="filter_tags",
-                                placeholder="All tags") if all_tags else []
-
-    st.markdown("---")
-
-    # ── Example queries ──────────────────────────────────────────
-    st.markdown("### 💡 Try These Queries")
-    for group, examples in EXAMPLE_QUERIES.items():
-        with st.expander(group, expanded=False):
-            for q in examples:
-                if st.button(q, key=f"ex_{q}", use_container_width=True):
-                    st.session_state.pending_query = q
+        nav_items = []
+        
+    with nc:
+        btn_cols = st.columns(len(nav_items))
+        active_page = st.session_state.get("active_page", "search")
+        for idx, (page_id, label) in enumerate(nav_items):
+            is_active = (active_page == page_id)
+            with btn_cols[idx]:
+                if st.button(
+                    label,
+                    key=f"nav_{page_id}",
+                    use_container_width=True,
+                    type="primary" if is_active else "secondary",
+                ):
+                    st.session_state["active_page"] = page_id
+                    # Persist last_page in DB so refresh returns user here
+                    _token = st.session_state.get("auth_token")
+                    if _token:
+                        from modules.db import update_token_last_page
+                        update_token_last_page(_token, page_id)
                     st.rerun()
 
-    st.markdown("---")
-
-    # ── Cache stats ──────────────────────────────────────────────
-    stats = cache_stats()
-    st.markdown("""<div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:1.8px;color:#94a3b8;margin-bottom:7px;">Cache Status</div>""", unsafe_allow_html=True)
-    st.markdown(f"""
-    <div class="stat-row"><span>Exact cache</span><span class="stat-val">{stats['exact']['size']} / {stats['exact']['max_size']}</span></div>
-    <div class="stat-row"><span>Semantic cache</span><span class="stat-val">{stats['semantic']['size']} / {stats['semantic']['max_size']}</span></div>
-    <div class="stat-row"><span>Exact hits</span><span class="stat-val">{stats['exact']['hits']}</span></div>
-    <div class="stat-row"><span>Queries run</span><span class="stat-val">{st.session_state.total_queries}</span></div>
-    """, unsafe_allow_html=True)
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    if st.button("🗑️ Clear All Caches", use_container_width=True, type="secondary"):
-        clear_all_caches()
-        st.success("Caches cleared.")
-        st.rerun()
-
-    # ── Query history ────────────────────────────────────────────
-    if st.session_state.query_history:
-        with st.expander("📋 History", expanded=False):
-            for q, route, ms in reversed(st.session_state.query_history[-10:]):
-                icon = {"keyword": "🔵", "semantic": "🟢", "hybrid": "🟣"}.get(route, "⚡")
+    with nr:
+        if cur_user:
+            role  = cur_user.get("role", "user")
+            uname = cur_user.get("username", "")
+            role_badge = "🔺" if role == "admin" else "👤"
+            
+            user_col, logout_col = st.columns([0.6, 0.4])
+            with user_col:
                 st.markdown(
-                    f"<div style='font-size:0.76rem;color:#6b7280;padding:2px 0'>"
-                    f"{icon} {q[:38]} <span style='color:#d1d5db'>({ms:.0f}ms)</span></div>",
+                    f"<div style='text-align:right; font-size:0.85rem; padding-top:8px;'>"
+                    f"<b>{role_badge} {uname}</b></div>",
+                    unsafe_allow_html=True
+                )
+            with logout_col:
+                if st.button("Out", key="btn_logout", use_container_width=True):
+                    from modules.auth import logout_user
+                    logout_user()
+                    st.rerun()
+
+    st.markdown("<hr style='margin:0.5rem 0 1.5rem 0;'>", unsafe_allow_html=True)
+
+    # ── Global Tools Expander ─────────────────────────────────────────
+    with st.expander("⚙️ Tools & Filters", expanded=False):
+        t1, t2, t3 = st.columns(3)
+        
+        with t1:
+            st.markdown("**🔍 Filters**")
+            categories = get_categories()
+            all_tags   = get_all_tags()
+            sel_cats   = st.multiselect("Category", categories, key="filter_cats", placeholder="All categories")
+            sel_tags   = st.multiselect("Tags", all_tags, key="filter_tags", placeholder="All tags") if all_tags else []
+
+            # Example queries
+            st.markdown("**💡 Examples**")
+            for group, examples in EXAMPLE_QUERIES.items():
+                if st.button(f"{group}...", key=f"exg_{group}", use_container_width=True, help="Load an example"):
+                    st.session_state.pending_query = examples[0]
+                    st.session_state["active_page"] = "search"
+                    st.rerun()
+
+        with t2:
+            st.markdown("**Route Information**")
+            if active_response:
+                route = active_response.get("route_decision", "")
+                lms   = active_response.get("latency_ms", {})
+                total = lms.get("total", 0)
+                cache = lms.get("cache", "")
+                qtype = active_response.get("query_type", "")
+                icons = {"keyword": "🔵", "semantic": "🟢", "hybrid": "🟣"}
+                arb   = f"arb-{route}" if route in icons else "arb-none"
+                cache_note = f" · {cache} cache" if cache else ""
+                qtype_note = f" · {qtype}" if qtype else ""
+                st.markdown(
+                    f'<div class="active-route-badge {arb}">'
+                    f'{icons.get(route,"⚡")} <strong>{route.upper()}</strong>'
+                    f'<br><span style="font-size:0.7rem;opacity:0.75">{total:.1f} ms{cache_note}{qtype_note}</span>'
+                    f'</div>',
                     unsafe_allow_html=True,
                 )
+            else:
+                st.markdown('<div class="active-route-badge arb-none">No query yet</div>', unsafe_allow_html=True)
 
-    return sel_cats, sel_tags
+            # Route legend
+            st.markdown(f"""
+            <div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:1.8px;color:#94a3b8;margin:8px 0 7px;">Route Logic</div>
+            <div class="legend-row"><div class="legend-dot" style="background:#3b82f6;"></div><span><b style="color:#1d4ed8">Keyword</b> — course codes</span></div>
+            <div class="legend-row"><div class="legend-dot" style="background:#22c55e;"></div><span><b style="color:#15803d">Semantic</b> — high similarity</span></div>
+            <div class="legend-row"><div class="legend-dot" style="background:#a855f7;"></div><span><b style="color:#6d28d9">Hybrid</b> — semantic + keyword fallback</span></div>
+            """, unsafe_allow_html=True)
 
+        with t3:
+            st.markdown("**Cache & History**")
+            stats = cache_stats()
+            st.markdown(f"""
+            <div class="stat-row"><span>Exact cache</span><span class="stat-val">{stats['exact']['size']}</span></div>
+            <div class="stat-row"><span>Semantic cache</span><span class="stat-val">{stats['semantic']['size']}</span></div>
+            <div class="stat-row"><span>Exact hits</span><span class="stat-val">{stats['exact']['hits']}</span></div>
+            <div class="stat-row"><span>Queries run</span><span class="stat-val">{st.session_state.total_queries}</span></div>
+            """, unsafe_allow_html=True)
+            if st.button("🗑️ Clear Caches", use_container_width=True, type="secondary"):
+                clear_all_caches()
+                st.rerun()
+                
+            from modules.db import get_history
+            
+            _cur = get_current_user()
+            if _cur:
+                user_hist = get_history(_cur["id"], limit=3)
+                if user_hist:
+                    st.markdown("**Recent**")
+                    for q, route, ms in user_hist:
+                        icon = {"keyword": "🔵", "semantic": "🟢", "hybrid": "🟣"}.get(route, "⚡")
+                        st.markdown(
+                            f"<div style='font-size:0.76rem;color:#6b7280;padding:2px 0'>"
+                            f"{icon} {q[:25]} <span style='color:#d1d5db'>({ms:.0f}ms)</span></div>",
+                            unsafe_allow_html=True,
+                        )
 
-def render_route_panel(response: dict, cache_type):
-    route    = response.get("route_decision", "")
-    rationale = response.get("rationale", "")
-    query_type = response.get("query_type", "")
-    cfg      = ROUTE_CONFIG.get(route, ROUTE_CONFIG["hybrid"])
-    cls      = "cached" if cache_type else cfg["cls"]
-    icon     = "💾" if cache_type else cfg["icon"]
-    label    = "CACHED" if cache_type else cfg["label"]
-    tier     = f"from {cache_type} cache" if cache_type else cfg["tier"]
-
-    intent_m = re.search(r"matched '(\w+)'\s+intent", rationale)
-    score_m  = re.search(r"similarity\s+([\d.]+)", rationale)
-    intent   = intent_m.group(1).capitalize() if intent_m else None
-    score    = float(score_m.group(1)) if score_m else None
-
-    meta = ""
-    if cache_type:
-        meta += f'<div class="route-meta-row"><span class="route-meta-key">Source</span><span class="route-meta-val">{cache_type} cache</span></div>'
-    entities = response.get("detected_entities", [])
-    if entities:
-        tags = " ".join(f'<span class="entity-tag">{e}</span>' for e in entities)
-        meta += f'<div class="route-meta-row"><span class="route-meta-key">Entities</span><span class="route-meta-val">{tags}</span></div>'
-    if intent:
-        meta += f'<div class="route-meta-row"><span class="route-meta-key">Intent</span><span class="route-meta-val">{intent}</span></div>'
-    if score:
-        meta += f'<div class="route-meta-row"><span class="route-meta-key">Confidence</span><span class="route-meta-val"><b>{score:.4f}</b></span></div>'
-    meta += f'<div class="route-meta-row"><span class="route-meta-key">Trigger</span><span class="route-meta-val">{tier}</span></div>'
-
-    # Query type chip
-    qtype_html = ""
-    if query_type:
-        qcls = QTYPE_CLASS.get(query_type, "qtype-hybrid")
-        qtype_html = f'<span class="qtype-chip {qcls}">{query_type}</span>'
-
-    st.markdown(f"""
-    <div class="route-hero route-hero-{cls}">
-        <div class="route-icon">{icon}</div>
-        <div class="route-tier-label route-tier-{cls}">Routing Decision</div>
-        <div class="route-decision-name route-name-{cls}">{label} {qtype_html}</div>
-        {meta}
-    </div>
-    """, unsafe_allow_html=True)
-
-
-def render_latency_panel(lms: dict):
-    total_ms   = lms.get("total", 0)
-    cache_type = lms.get("cache", "")
-
-    c_met, c_note = st.columns([0.45, 0.55])
-    with c_met:
-        st.metric("⚡ Total Latency", f"{total_ms:.1f} ms")
-    with c_note:
-        if cache_type:
-            st.info(f"💾 **{cache_type.capitalize()} cache hit** — pipeline bypassed")
-        else:
-            budget = min(total_ms / 2000, 1.0)
-            st.progress(budget, text=f"{budget*100:.0f}% of 2 000 ms budget")
-
-    stages = [(s, lbl, lms[s]) for s, lbl in STAGE_META if s in lms]
-    if not stages:
-        return
-    max_ms = max(ms for _, _, ms in stages) or 1.0
-    for _, label, ms in stages:
-        c1, c2, c3 = st.columns([3, 6, 1])
-        with c1:
-            st.markdown(f"<div style='font-size:0.74rem;color:#6b7280;padding-top:4px'>{label}</div>", unsafe_allow_html=True)
-        with c2:
-            st.progress(min(ms / max_ms, 1.0))
-        with c3:
-            st.markdown(f"<div style='font-size:0.73rem;color:#9ca3af;padding-top:4px;text-align:right'>{ms:.0f}ms</div>", unsafe_allow_html=True)
-
-
-def render_rationale(rationale: str):
-    if not rationale:
-        return
-    st.markdown('<div class="section-label" style="margin-top:16px">System Rationale</div>', unsafe_allow_html=True)
-    sentences = re.split(r'(?<=[.!?])\s+', rationale.strip())
-    short = _bold_numbers(" ".join(sentences[:3]))
-    st.markdown(f'<div class="rationale-box">{short}</div>', unsafe_allow_html=True)
-
-
-def render_result_card(result: dict, is_top: bool = False):
-    rank   = result.get("rank", 0)
-    source = result.get("source", "unknown")
-    score  = result.get("score", 0.0)
-    cat    = result.get("category", "")
-    tags   = result.get("tags", [])  # Step 8: standardised field, guaranteed by pipeline
-    q      = result.get("question", "")
-    a      = result.get("answer", "")
-
-    badge  = SOURCE_BADGES.get(source, f'<span class="src-badge src-unknown">{source}</span>')
-    cat_h  = f'<span class="cat-chip">{cat}</span>' if cat else ""
-    tags_h = _tags_html(tags) if isinstance(tags, list) else ""
-    bullets = _explanation_bullets(source, rank, score)
-
-    if is_top:
-        tags_row = f'<div style="margin-bottom:6px">{tags_h}</div>' if tags_h else ""
-        html = (
-            f'<div class="result-card-top">'
-            f'<div class="best-match-banner">🏆 Best Match</div>'
-            f'<div class="result-header">'
-            f'<span class="result-rank result-rank-top">#{rank}</span>'
-            f'{badge} {cat_h}'
-            f'<span class="score-chip score-chip-top">score: {score}</span>'
-            f'</div>'
-            f'{tags_row}'
-            f'<div class="result-question">{q}</div>'
-            f'<div class="result-answer">{a}</div>'
-            f'<div class="expl-section">{bullets}</div>'
-            f'</div>'
-        )
-        st.markdown(html, unsafe_allow_html=True)
-    else:
-        tags_row = f'<div style="margin-bottom:6px">{tags_h}</div>' if tags_h else ""
-        html = (
-            f'<div class="result-card">'
-            f'<div class="result-header">'
-            f'<span class="result-rank">#{rank}</span>'
-            f'{badge} {cat_h}'
-            f'<span class="score-chip">score: {score}</span>'
-            f'</div>'
-            f'{tags_row}'
-            f'<div class="result-question">{q}</div>'
-            f'<div class="result-answer">{a}</div>'
-            f'<div class="expl-section">{bullets}</div>'
-            f'</div>'
-        )
-        st.markdown(html, unsafe_allow_html=True)
-
+    return sel_cats if 'sel_cats' in dir() else [], sel_tags if 'sel_tags' in dir() else []
 
 def render_feedback_buttons(result: dict, query: str, route: str) -> None:
     """
@@ -620,6 +542,10 @@ def render_feedback_buttons(result: dict, query: str, route: str) -> None:
     faq_id = result.get("faq_id", "")
     if not faq_id:
         return
+
+    # Resolve current user_id for feedback record (global signal, user tracked)
+    _cur     = get_current_user()
+    _user_id = _cur["id"] if _cur else None
 
     # Unique per-FAQ-per-query key so state is isolated across results.
     fb_done_key = f"fb_done_{faq_id}_{abs(hash(query))}"
@@ -679,21 +605,20 @@ def render_feedback_buttons(result: dict, query: str, route: str) -> None:
         return
 
     # Buttons row —
-    c_lbl, c_up, c_dn, c_not, c_pad = st.columns([2.5, 0.55, 0.55, 1.5, 4])
-    with c_lbl:
-        st.markdown(
-            '<div style="font-size:0.68rem;color:#94a3b8;padding-top:5px;'
-            'font-weight:600;text-transform:uppercase;letter-spacing:0.5px">'
-            'Was this helpful?</div>',
-            unsafe_allow_html=True,
-        )
+    st.markdown(
+        '<div style="font-size:0.75rem;color:#64748b;margin-bottom:8px;'
+        'font-weight:600;">Was this helpful?</div>',
+        unsafe_allow_html=True,
+    )
+    c_up, c_dn, c_not = st.columns([1, 1, 2])
     with c_up:
         if st.button(
             "👍",
             key=f"fb_up_{faq_id}_{abs(hash(query))}",
             help="Helpful — this answered my question",
+            use_container_width=True
         ):
-            store_feedback(faq_id, query, route, result.get("score", 0.0), "up")
+            store_feedback(faq_id, query, route, result.get("score", 0.0), "up", user_id=_user_id)
             st.session_state[fb_done_key] = True
             st.rerun()
     with c_dn:
@@ -701,8 +626,9 @@ def render_feedback_buttons(result: dict, query: str, route: str) -> None:
             "👎",
             key=f"fb_dn_{faq_id}_{abs(hash(query))}",
             help="Not what I needed",
+            use_container_width=True
         ):
-            store_feedback(faq_id, query, route, result.get("score", 0.0), "down")
+            store_feedback(faq_id, query, route, result.get("score", 0.0), "down", user_id=_user_id)
             st.session_state[fb_done_key] = True
             st.rerun()
     with c_not:
@@ -710,8 +636,9 @@ def render_feedback_buttons(result: dict, query: str, route: str) -> None:
             "🚫 Not Helpful",
             key=f"fb_not_{faq_id}_{abs(hash(query))}",
             help="Completely unhelpful — wrong topic",
+            use_container_width=True
         ):
-            store_feedback(faq_id, query, route, result.get("score", 0.0), "not_helpful")
+            store_feedback(faq_id, query, route, result.get("score", 0.0), "not_helpful", user_id=_user_id)
             st.session_state[fb_done_key] = True
             st.rerun()
 
@@ -720,65 +647,109 @@ def render_results(results: list[dict], query: str = "", route: str = ""):
     if not results:
         st.warning("No documents retrieved for this query.")
         return
-    st.markdown(
-        f'<div class="section-label">Retrieved Documents '
-        f'<span style="font-weight:400;text-transform:none;letter-spacing:0;color:#94a3b8">'
-        f'— {len(results)} result{"s" if len(results)!=1 else ""}</span></div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown("#### Retrieved Documents")
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Route badge colour map
+    _BADGE_STYLES = {
+        "semantic": "background:#dcfce7; color:#15803d; border:1.5px solid #86efac;",
+        "keyword":  "background:#dbeafe; color:#1d4ed8; border:1.5px solid #93c5fd;",
+        "hybrid":   "background:#f3e8ff; color:#6d28d9; border:1.5px solid #c4b5fd;",
+        "cached":   "background:#fff7ed; color:#c2410c; border:1.5px solid #fdba74;",
+    }
+    _BADGE_ICONS = {
+        "semantic": "🟢", "keyword": "🔵", "hybrid": "🟣", "cached": "🟠",
+    }
+
+    route_key = route.lower() if route else "semantic"
+    badge_style = _BADGE_STYLES.get(route_key, _BADGE_STYLES["semantic"])
+    badge_icon  = _BADGE_ICONS.get(route_key, "⚡")
+
     for i, r in enumerate(results):
-        render_result_card(r, is_top=(i == 0))
-        if query:                                     # feedback buttons (Phase 2)
+        q     = r.get("question", "")
+        a     = r.get("answer", "")
+        score = r.get("score", 0.0)
+        tags  = r.get("tags", [])
+
+        st.markdown(
+            '<div style="padding:1.5rem 1.75rem; border:1.5px solid #e2e8f0; '
+            'border-radius:12px; margin-bottom:1.5rem; background:#ffffff;">',
+            unsafe_allow_html=True,
+        )
+
+        # ── Route badge + confidence row (ABOVE question) ──────────────
+        conf_color = "#16a34a" if score >= 0.65 else "#d97706"
+        st.markdown(
+            f'<div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">'
+            f'<span style="{badge_style} padding:5px 14px; border-radius:8px; '
+            f'font-weight:700; font-size:14px; display:inline-flex; align-items:center; gap:5px;">'
+            f'{badge_icon} {route_key.upper()}</span>'
+            f'<span style="font-size:13px; color:{conf_color}; font-weight:600;">'
+            f'Confidence: {score:.2f}</span>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+        # ── Question ───────────────────────────────────────────────────
+        st.markdown(
+            f'<div style="font-size:1.15rem; font-weight:700; color:#0f172a; '
+            f'margin-bottom:8px; line-height:1.4;">{q}</div>',
+            unsafe_allow_html=True,
+        )
+
+        # ── Answer ─────────────────────────────────────────────────────
+        st.markdown(
+            f'<div style="font-size:0.95rem; color:#334155; line-height:1.7; '
+            f'margin-bottom:1rem;">{a}</div>',
+            unsafe_allow_html=True,
+        )
+
+        # ── Feedback buttons ───────────────────────────────────────────
+        if query:
             render_feedback_buttons(r, query, route)
+
+        # ── Divider ────────────────────────────────────────────────────
+        st.markdown(
+            "<hr style='margin:14px 0 10px 0; border:none; border-top:1px solid #e2e8f0;'>",
+            unsafe_allow_html=True,
+        )
+
+        # ── Tags (tertiary, below divider) ─────────────────────────────
+        if tags:
+            tags_html = " ".join(
+                f'<span style="background:#f0f9ff; border:1px solid #bae6fd; '
+                f'border-radius:4px; padding:1px 8px; font-size:0.72rem; '
+                f'color:#0369a1; font-weight:600;">{t}</span>'
+                for t in tags
+            )
+            st.markdown(
+                f'<div style="font-size:0.78rem; color:#94a3b8;">'
+                f'Tags: {tags_html}</div>',
+                unsafe_allow_html=True,
+            )
+
+        st.markdown('</div>', unsafe_allow_html=True)
 
 
 def render_compare_column(results: list[dict], label: str, css_cls: str):
-    st.markdown(
-        f'<div class="compare-col-header compare-{css_cls}">{label}</div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown(f"#### {label}")
     if not results:
         st.info("No results")
         return
     for r in results:
-        score  = r.get("score", 0.0)
-        tags   = r.get("tags") or []
-        source = r.get("source", "")
-        q      = r.get("question", "")
-        a      = textwrap.shorten(r.get("answer", ""), 160)
-
-        # Build badge + tags as plain text to avoid raw HTML in f-string
-        src_label  = source.upper() if source else ""
-        src_colour = {"both": "#6d28d9", "semantic": "#15803d", "keyword": "#1d4ed8"}.get(source, "#64748b")
-        src_bg     = {"both": "#f3e8ff", "semantic": "#dcfce7", "keyword": "#dbeafe"}.get(source, "#f1f5f9")
-        tags_str   = " · ".join(tags) if tags else ""
-
-        card_parts = [
-            f'<div class="compare-card">',
-            f'<div class="compare-card-q">{q}</div>',
-            f'<div class="compare-card-a">{a}</div>',
-            f'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px">',
-        ]
-        if source:
-            card_parts.append(
-                f'<span style="background:{src_bg};color:{src_colour};border:1.5px solid {src_colour}4d;'
-                f'border-radius:20px;padding:2px 9px;font-size:0.67rem;font-weight:700;'
-                f'text-transform:uppercase">{src_label}</span>'
-            )
-        if tags_str:
-            card_parts.append(
-                f'<span style="font-size:0.67rem;color:#0369a1">{tags_str}</span>'
-            )
-        card_parts.append(
-            f'<span style="margin-left:auto;font-size:0.7rem;color:#94a3b8;font-weight:600">score: {score}</span>'
-        )
-        card_parts.append('</div></div>')
-        st.markdown("".join(card_parts), unsafe_allow_html=True)
+        q = r.get("question", "")
+        a = textwrap.shorten(r.get("answer", ""), 160)
+        score = r.get("score", 0.0)
+        
+        st.markdown(f"**{q}**")
+        st.markdown(f"{a}")
+        st.caption(f"Confidence: {score:.4f}")
+        st.markdown("<hr style='margin: 12px 0; border: none; border-top: 1px solid #e2e8f0;'>", unsafe_allow_html=True)
 
 
-# ═══════════════════════════════════════════════════════════════
+# ========================================================================================================================
 # LOGIN PAGE  (Phase 1 — additive)
-# ═══════════════════════════════════════════════════════════════
+# ========================================================================================================================
 
 def render_login_page() -> None:
     """
@@ -831,9 +802,15 @@ def render_login_page() -> None:
                 else:
                     try:
                         user = login_user(uname, pwd)
+                        role = user.get("role", "user")
+                        if role == "admin":
+                            st.session_state["active_page"] = "admin_dashboard"
+                        else:
+                            st.session_state["active_page"] = "search"
+                        
                         st.success(
                             f"Welcome, **{user['username']}**! "
-                            f"({'Admin' if user['role'] == 'admin' else 'User'} account)"
+                            f"({'Admin' if role == 'admin' else 'User'} account)"
                         )
                         st.rerun()
                     except ValueError as exc:
@@ -881,70 +858,18 @@ def render_login_page() -> None:
         )
 
 
-# ═══════════════════════════════════════════════════════════════
+# ========================================================================================================================
 # PAGE LAYOUT
-# ═══════════════════════════════════════════════════════════════
+# ========================================================================================================================
 
-# ── Auth gate — show login page if not authenticated ──────────
+# ── Auth gate ─────────────────────────────────────────────────
 if not is_authenticated():
     render_login_page()
-    st.stop()   # halt further rendering; rerun() after login shows main UI
+    st.stop()
 
-# ── Session header (shown when logged in) ──────────────────────
 _cur_user = get_current_user()
-with st.sidebar:
-    st.markdown(
-        f"<div style='background:rgba(99,102,241,0.12);border:1px solid "
-        f"rgba(99,102,241,0.3);border-radius:10px;padding:10px 14px;"
-        f"margin-bottom:12px;font-size:0.82rem;'>"
-        f"<span style='font-weight:700;color:#6366f1;'>"
-        f"{'&#9654; Admin' if _cur_user['role'] == 'admin' else '&#128100; User'}</span>"
-        f"&nbsp;&nbsp;<span style='color:#475569;'>{_cur_user['username']}</span>"
-        f"</div>",
-        unsafe_allow_html=True,
-    )
-    if st.button("Sign Out", key="btn_logout", use_container_width=True):
-        logout_user()
-        st.rerun()
 
-    # Phase 3: Admin dashboard navigation (admin role only)
-    if _cur_user["role"] == "admin":
-        st.markdown("---")
-        st.markdown(
-            "<div style='font-size:0.75rem;color:#94a3b8;font-weight:600;"
-            "text-transform:uppercase;letter-spacing:0.05em;"
-            "margin-bottom:6px;'>Admin</div>",
-            unsafe_allow_html=True,
-        )
-        st.session_state.setdefault("show_admin", False)
-        _lbl = "🔒 Exit Admin View" if st.session_state.show_admin else "📊 Admin Dashboard"
-        if st.button(_lbl, key="btn_admin_dash", use_container_width=True):
-            st.session_state.show_admin = not st.session_state.show_admin
-            st.rerun()
-
-# ── Page header ────────────────────────────────────────────────
-st.markdown("""
-<div class="page-header">
-    <h1>🎓 Semantic FAQ Router</h1>
-    <p class="sub">7-phase modular retrieval — agentic routing · hybrid RRF · explainability · caching · management</p>
-    <div class="phase-pills">
-        <span class="phase-pill">Phase 1 · Embeddings</span>
-        <span class="phase-pill">Phase 2 · BM25 Keyword</span>
-        <span class="phase-pill">Phase 3 · Tier 1 Router</span>
-        <span class="phase-pill">Phase 4 · Tier 2 Router</span>
-        <span class="phase-pill">Phase 5 · Hybrid RRF</span>
-        <span class="phase-pill">Phase 6 · Explainability</span>
-        <span class="phase-pill">Phase 7 · Caching</span>
-        <span class="phase-pill">F1 · FAQ CRUD</span>
-        <span class="phase-pill">F2 · Compare</span>
-        <span class="phase-pill">F6 · Embed Store</span>
-        <span class="phase-pill">🌐 Multilingual</span>
-        <span class="phase-pill" style="background:rgba(249,115,22,0.25);border-color:rgba(249,115,22,0.5)">💬 Feedback</span>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-# ── Load fixtures ──────────────────────────────────────────────
+# ── Load fixtures ─────────────────────────────────────────────
 with st.spinner("⏳ Loading embedding model..."):
     fixtures = load_pipeline_fixtures()
 
@@ -960,82 +885,117 @@ from modules.feedback_store import (
     get_feedback_score,
     get_suggested_tags,
 )
+from modules.admin_dashboard import render_admin_dashboard
 
 PIPELINE_ARGS = dict(
     model=model, corpus_embeddings=corpus_embeddings, faq_docs=faq_docs,
     bm25_index=bm25_index, patterns=patterns, intent_embeddings=intent_embeddings, top_k=5,
 )
 
-# ── Sidebar (must come AFTER fixtures so faq_manager is importable) ──────────
-# Guard: on first load these keys don't exist yet — render_sidebar needs them.
+# ── Top Navbar ────────────────────────────────────────────────
+role = _cur_user.get("role", "user") if _cur_user else "user"
+if "active_page" not in st.session_state:
+    st.session_state["active_page"] = "admin_dashboard" if role == "admin" else "search"
+
 st.session_state.setdefault("response", None)
 st.session_state.setdefault("pending_query", "")
-with st.sidebar:
-    sel_categories, sel_tags_filter = render_sidebar(st.session_state.response)
+sel_categories, sel_tags_filter = render_navbar(st.session_state.response, _cur_user)
 
-# ═══════════════════════════════════════════════════════════════
-# ADMIN DASHBOARD (Phase 3 — admin only, hides normal tabs)
-# ═══════════════════════════════════════════════════════════════
-from modules.admin_dashboard import render_admin_dashboard
+# ── Page routing ──────────────────────────────────────────────
+active_page = st.session_state.get("active_page")
 
-if _cur_user["role"] == "admin" and st.session_state.get("show_admin", False):
-    render_admin_dashboard()
-    st.stop()   # do not render user tabs when dashboard is active
+# Guard: Role-based Access Control
+if role == "user" and active_page not in ["search", "rag"]:
+    st.error("Access denied")
+    st.stop()
 
-# ═══════════════════════════════════════════════════════════════
-# TABS  (normal user + admin when dashboard is closed)
-# ═══════════════════════════════════════════════════════════════
-tab_search, tab_compare, tab_manage, tab_rag = st.tabs([
-    "🔍 Search", "⚖️ Compare", "📋 Manage FAQs", "🤖 RAG Answer"
-])
+if role == "admin" and active_page not in ["compare", "admin_dashboard", "manage_faq"]:
+    st.error("Access denied")
+    st.stop()
 
 
 # ─────────────────────────────────────────────────────────────
-# TAB 1: SEARCH
+# PAGE: SEARCH
 # ─────────────────────────────────────────────────────────────
-with tab_search:
+if active_page == "search":
+    st.markdown(
+        "<h3 style='margin-bottom:4px;'>🔍 Search</h3>"
+        "<p style='color:#64748b;font-size:0.85rem;margin-bottom:16px;'>"
+        "Ask any university-related question.</p>",
+        unsafe_allow_html=True,
+    )
+
     # Handle pending query from sidebar buttons
-    default_val = st.session_state.pending_query
     if st.session_state.pending_query:
+        st.session_state.query_input = st.session_state.pending_query
         st.session_state.pending_query = ""
 
-    cin, cbtn = st.columns([0.85, 0.15])
-    with cin:
-        query = st.text_input(
-            "University FAQ Query",
-            value=default_val,
-            label_visibility="collapsed",
-            placeholder="Ask a question — 'CS-202 prerequisites', 'What happens if I miss an exam?'",
-            key="query_input",
-        )
-    with cbtn:
+    _, col, _ = st.columns([1, 3, 1])
+    with col:
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        search_col, voice_col = st.columns([0.88, 0.12])
+        
+        with voice_col:
+            from modules.voice_utils import get_voice_input, normalize_voice_query
+            voice_text = get_voice_input()
+            if voice_text is not None:
+                if not voice_text.strip():
+                    st.warning("No voice input detected")
+                else:
+                    clean_query = normalize_voice_query(voice_text)
+                    if clean_query:
+                        st.session_state.query_input = clean_query
+                        st.session_state.last_voice_text = voice_text
+                        
+        with search_col:
+            query = st.text_input(
+                "University FAQ Query",
+                label_visibility="collapsed",
+                placeholder="Ask a question — 'CS-202 prerequisites', 'What happens if I miss an exam?'",
+                key="query_input",
+            )
+            
+        st.markdown("<br>", unsafe_allow_html=True)
         search_clicked = st.button("Ask →", type="primary", use_container_width=True)
+        
+        if st.session_state.get("last_voice_text"):
+            st.info(f"🎤 Transcribed text: {st.session_state.last_voice_text}")
+            if search_clicked:
+                st.session_state.last_voice_text = ""
+                
+        st.markdown("<br>", unsafe_allow_html=True)
 
     # ── Execute pipeline ────────────────────────────────────────
     if search_clicked and query.strip():
         with st.spinner("🔍 Running pipeline..."):
             try:
-                # ── Multilingual pre-processing (Phase 1 improvement) ──
                 query_data      = multilingual_process_query(query.strip())
                 processed_query = query_data["processed_query"]
-
-                # Core pipeline — receives English query (unchanged API)
-                resp = run_pipeline(processed_query, **PIPELINE_ARGS)
-
-                # Attach multilingual metadata to response (non-breaking)
+                
+                _cur = get_current_user()
+                _user_id = _cur["id"] if _cur else None
+                
+                resp = run_pipeline(processed_query, _user_id, **PIPELINE_ARGS)
                 resp["original_query"] = query_data["original_query"]
                 resp["language"]       = query_data["language"]
                 resp["translated"]     = query_data["translated"]
-
             except Exception as e:
                 st.error(f"Pipeline error: {e}")
                 st.stop()
         st.session_state.response = resp
         st.session_state.total_queries += 1
         lms = resp.get("latency_ms", {})
-        st.session_state.query_history.append(
-            (query.strip(), resp.get("route_decision", "?"), lms.get("total", 0))
-        )
+        
+        if _user_id:
+            from modules.db import store_query
+            store_query(
+                _user_id, 
+                query.strip(), 
+                resp.get("route_decision", "?"), 
+                lms.get("total", 0)
+            )
+            
         st.rerun()
 
     # ── Render response ─────────────────────────────────────────
@@ -1055,13 +1015,14 @@ with tab_search:
         </div>
         """, unsafe_allow_html=True)
     else:
-        lms          = response.get("latency_ms", {})
-        cache_type   = response.get("cache_type", "miss")   # new top-level field
-        cache_sim    = response.get("cache_similarity", 0.0) # new: cosine score for semantic hits
-        route        = response.get("route_decision", "")
-        query_type   = response.get("query_type", "")
+        lms        = response.get("latency_ms", {})
+        cache_type = response.get("cache_type", "miss")
+        cache_sim  = response.get("cache_similarity", 0.0)
+        route      = response.get("route_decision", "")
+        query_type = response.get("query_type", "")
+        rationale  = response.get("rationale", "")
 
-        # ── Multilingual translation badge (Phase 1 improvement) ──────
+        # ── Multilingual badge ──────────────────────────────────
         _translated = response.get("translated", False)
         _lang       = response.get("language", "en")
         _orig_q     = response.get("original_query", "")
@@ -1071,65 +1032,51 @@ with tab_search:
                 f"*(original: \u201c{_orig_q[:80]}{'...' if len(_orig_q) > 80 else ''}\u201d)*"
             )
         else:
-            st.caption(f"🌐 Language detected: **English**")
+            st.caption(f"🌐 Language detected: **{_lang.upper() if _lang else 'English'}**")
 
-        # Feature 3: Low confidence alert
+        # ── Low confidence alert ────────────────────────────────
         if response.get("low_confidence"):
             warn = response.get("confidence_warning", "⚠️ Low confidence result.")
             st.warning(warn)
 
-        # Cache banner — uses new top-level cache_type field
+        # ── Cache hit ───────────────────────────────────────────
         if cache_type in ("exact", "semantic"):
-            if cache_type == "exact":
-                icon     = "⚡"
-                sim_note = ""
-            else:
-                icon     = "🔮"
-                sim_note = f" &nbsp;·&nbsp; similarity <strong>{cache_sim:.4f}</strong>"
-            st.markdown(f"""
-            <div class="cache-banner">
-                {icon} <span><strong>Cache Hit</strong> — <strong>{cache_type}</strong>
-                cache in <strong>{lms.get('total',0):.2f} ms</strong>{sim_note}</span>
-            </div>
-            """, unsafe_allow_html=True)
+            st.success("⚡ Served from cache")
 
-        # Route + latency side by side
-        c_route, c_lat = st.columns([0.38, 0.62])
-        with c_route:
-            st.markdown('<div class="section-label">Routing Decision</div>', unsafe_allow_html=True)
-            render_route_panel(response, cache_type if cache_type != "miss" else None)
-        with c_lat:
-            st.markdown('<div class="section-label">Pipeline Latency Profile</div>', unsafe_allow_html=True)
-            render_latency_panel(lms)
-
-        render_rationale(response.get("rationale", ""))
-        st.divider()
-
-        # Apply filters (Feature 5)
+        # ── Filters + Results ───────────────────────────────────
         all_results = response.get("results", [])
         filtered    = _apply_filters(all_results, sel_categories, sel_tags_filter)
 
         if sel_categories or sel_tags_filter:
-            st.caption(f"Showing {len(filtered)} of {len(all_results)} results after filters (category={sel_categories or 'all'}, tags={sel_tags_filter or 'all'})")
+            st.caption(
+                f"Showing {len(filtered)} of {len(all_results)} results "
+                f"(category={sel_categories or 'all'}, tags={sel_tags_filter or 'all'})"
+            )
 
-        render_results(
-            filtered if (sel_categories or sel_tags_filter) else all_results,
-            query=response.get("query", ""),
-            route=response.get("route_decision", ""),
-        )
+        _, res_col, _ = st.columns([1, 3, 1])
+        with res_col:
+            render_results(
+                filtered if (sel_categories or sel_tags_filter) else all_results,
+                query=response.get("query", ""),
+                route=response.get("route_decision", ""),
+            )
 
-        with st.expander("🔧 Developer View (Raw JSON)", expanded=False):
-            st.json({k: v for k, v in response.items() if k != "latency_ms"})
-            st.json({"latency_ms": lms})
+            with st.expander("🔧 Developer View (Raw JSON)", expanded=False):
+                st.json({k: v for k, v in response.items() if k != "latency_ms"})
+                st.json({"latency_ms": lms})
 
 
 
 # ─────────────────────────────────────────────────────────────
-# TAB 2: COMPARE (Feature 2)
+# PAGE: COMPARE
 # ─────────────────────────────────────────────────────────────
-with tab_compare:
-    st.markdown("### ⚖️ Side-by-Side Retrieval Comparison")
-    st.caption("Runs the same query through all three retrieval strategies simultaneously.")
+elif active_page == "compare":
+    st.markdown(
+        "<h3 style='margin-bottom:4px;'>⚖️ Compare</h3>"
+        "<p style='color:#64748b;font-size:0.85rem;margin-bottom:16px;'>"
+        "Run the same query through Keyword, Semantic, and Hybrid retrievers simultaneously.</p>",
+        unsafe_allow_html=True,
+    )
 
     cq_in, cq_btn = st.columns([0.82, 0.18])
     with cq_in:
@@ -1158,26 +1105,26 @@ with tab_compare:
 
     cmp = st.session_state.compare_result
     if cmp:
-        c_sem, c_kw, c_hyb = st.columns(3)
-        with c_sem:
-            sem_data = cmp.get("semantic", {})
-            render_compare_column(
-                sem_data.get("results", []) if isinstance(sem_data, dict) else sem_data,
-                f"🟢 Semantic · {sem_data.get('latency_ms', '?')} ms" if isinstance(sem_data, dict) else "🟢 Semantic",
-                "semantic",
-            )
+        c_kw, c_sem, c_hyb = st.columns(3)
         with c_kw:
             kw_data = cmp.get("keyword", {})
             render_compare_column(
                 kw_data.get("results", []) if isinstance(kw_data, dict) else kw_data,
-                f"🔵 Keyword · {kw_data.get('latency_ms', '?')} ms" if isinstance(kw_data, dict) else "🔵 Keyword",
+                "Keyword Results",
                 "keyword",
+            )
+        with c_sem:
+            sem_data = cmp.get("semantic", {})
+            render_compare_column(
+                sem_data.get("results", []) if isinstance(sem_data, dict) else sem_data,
+                "Semantic Results",
+                "semantic",
             )
         with c_hyb:
             hyb_data = cmp.get("hybrid", {})
             render_compare_column(
                 hyb_data.get("results", []) if isinstance(hyb_data, dict) else hyb_data,
-                f"🟣 Hybrid · {hyb_data.get('latency_ms', '?')} ms" if isinstance(hyb_data, dict) else "🟣 Hybrid",
+                "Hybrid Results",
                 "hybrid",
             )
     else:
@@ -1191,56 +1138,138 @@ with tab_compare:
 
 
 # ─────────────────────────────────────────────────────────────
-# TAB 3: MANAGE FAQs (Feature 1)
+# PAGE: RAG ANSWER
 # ─────────────────────────────────────────────────────────────
-with tab_manage:
-    st.markdown("### 📋 FAQ Management")
-    st.caption("Add, edit, or delete FAQs. Changes are persisted to faqs.json. Reload the app to re-embed.")
+elif active_page == "rag":
+    st.markdown(
+        "<h3 style='margin-bottom:4px;'>🧠 RAG Answer</h3>"
+        "<p style='color:#64748b;font-size:0.85rem;margin-bottom:16px;'>"
+        "Retrieval-augmented generation — retrieves context then generates an answer.</p>",
+        unsafe_allow_html=True,
+    )
+    rag_query = st.text_input("Ask a question for generated answer...", key="rag_input")
+    if st.button("Generate Answer", type="primary", key="rag_btn"):
+        if not rag_query.strip():
+            st.warning("Please enter a question.")
+        else:
+            with st.spinner("Generating answer..."):
+                rag_resp = generate_rag_answer(rag_query, top_k=3, fixtures=fixtures)
+                ans  = rag_resp["generated_answer"]
+                docs = rag_resp["source_documents"]
 
-    # ── Load current FAQs ──────────────────────────────────────
+                st.markdown(
+                    f'<div style="font-size:1.1rem;padding:15px;border-radius:8px;'
+                    f'background:#f8fafc;border:1px solid #e2e8f0;color:#0f172a;margin-bottom:20px;">'
+                    f'{ans}</div>',
+                    unsafe_allow_html=True,
+                )
+
+                if len(docs) == 0 or "I could not find a precise answer" in ans:
+                    st.warning("Low confidence: answer may be incomplete.")
+
+                st.divider()
+                st.markdown("#### Sources used:")
+                for doc in docs:
+                    q = doc.get("question", "")
+                    a = doc.get("answer", "")
+                    st.markdown(
+                        '<div style="margin-bottom:10px;padding:10px;border-left:3px solid #6366f1;'
+                        'background:#ffffff;border-radius:0 4px 4px 0;box-shadow:0 1px 2px rgba(0,0,0,0.05);">'
+                        f'<strong style="color:#1e293b;">Q: {q}</strong><br>'
+                        f'<span style="color:#475569;font-size:0.9rem;">{a[:150]}...</span>'
+                        '</div>',
+                        unsafe_allow_html=True,
+                    )
+
+
+# ─────────────────────────────────────────────────────────────
+# PAGE: ADMIN DASHBOARD (admin only)
+# ─────────────────────────────────────────────────────────────
+elif active_page == "admin_dashboard" and _cur_user["role"] == "admin":
+    render_admin_dashboard()
+
+
+# ─────────────────────────────────────────────────────────────
+# PAGE: MANAGE FAQ (admin only)
+# ─────────────────────────────────────────────────────────────
+elif active_page == "manage_faq" and _cur_user["role"] == "admin":
+    st.markdown(
+        "<h3 style='margin-bottom:4px;'>⚙️ Manage FAQ</h3>"
+        "<p style='color:#64748b;font-size:0.85rem;margin-bottom:16px;'>"
+        "Add, edit, or delete FAQs. Changes persist to faqs.json.</p>",
+        unsafe_allow_html=True,
+    )
+
     try:
         current_faqs = load_faqs()
     except Exception as e:
         st.error(f"Could not load FAQs: {e}")
         current_faqs = []
 
-    m_add, m_list = st.columns([0.42, 0.58])
+    st.markdown("""
+        <style>
+        .manage-form-container {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            margin-bottom: 20px;
+        }
+        .manage-faq-card { 
+            background:#fff; 
+            border:1px solid #e2e8f0; 
+            border-radius:12px;
+            padding:16px 20px; 
+            margin-bottom:12px;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease-in-out;
+        }
+        .manage-faq-card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+            border-color: #c7d2fe;
+            transform: translateY(-2px);
+        }
+        .manage-faq-q { font-weight:700; color:#0f172a; font-size:0.95rem; margin-bottom:6px; line-height: 1.4; }
+        .manage-faq-meta { font-size:0.75rem; color:#64748b; display: flex; align-items: center; gap: 8px; }
+        </style>
+    """, unsafe_allow_html=True)
 
-    # ── ADD / EDIT form ─────────────────────────────────────────
+    m_add, m_list = st.columns([0.42, 0.58], gap="large")
+
     with m_add:
         edit_id = st.session_state.edit_faq_id
         if edit_id:
             edit_target = next((f for f in current_faqs if str(f.get("id")) == str(edit_id)), None)
-            st.subheader(f"✏️ Edit FAQ: {edit_id}")
+            st.markdown(f"<h3 style='color:#4f46e5;font-size:1.4rem;margin-bottom:16px;'>✏️ Edit FAQ: {edit_id}</h3>", unsafe_allow_html=True)
         else:
             edit_target = None
-            st.subheader("➕ Add New FAQ")
+            st.markdown("<h3 style='color:#4f46e5;font-size:1.4rem;margin-bottom:16px;'>➕ Add New FAQ</h3>", unsafe_allow_html=True)
 
-        with st.form("faq_form", clear_on_submit=True):
+        st.markdown('<div class="manage-form-container">', unsafe_allow_html=True)
+        with st.form("faq_form", clear_on_submit=True, border=False):
             f_question = st.text_area(
                 "Question *",
                 value=edit_target.get("question", "") if edit_target else "",
-                height=80,
-                key="f_q",
+                height=80, key=f"f_q_{edit_id}" if edit_target else "f_q_new",
             )
             f_answer = st.text_area(
                 "Answer *",
                 value=edit_target.get("answer", "") if edit_target else "",
-                height=120,
-                key="f_a",
+                height=120, key=f"f_a_{edit_id}" if edit_target else "f_a_new",
             )
-            cats = get_categories()
+            cats     = get_categories()
             all_cats = sorted(set(FAQ_CATEGORIES + cats))
-            cat_def = edit_target.get("category", "other") if edit_target else "course"
-            cat_idx = all_cats.index(cat_def) if cat_def in all_cats else 0
-            f_category = st.selectbox("Category *", all_cats, index=cat_idx, key="f_cat")
+            cat_def  = edit_target.get("category", "other") if edit_target else "course"
+            cat_idx  = all_cats.index(cat_def) if cat_def in all_cats else 0
+            f_category = st.selectbox("Category *", all_cats, index=cat_idx, key=f"f_cat_{edit_id}" if edit_target else "f_cat_new")
             f_tags = st.text_input(
                 "Tags (comma-separated)",
                 value=", ".join(edit_target.get("tags", [])) if edit_target else "",
-                key="f_tags",
-                placeholder="e.g. prerequisite, grades, semester",
+                key=f"f_tags_{edit_id}" if edit_target else "f_tags_new", placeholder="e.g. prerequisite, grades, semester",
             )
-
+            
+            st.markdown("<br>", unsafe_allow_html=True)
             c_sub, c_cancel = st.columns(2)
             with c_sub:
                 submitted = st.form_submit_button(
@@ -1251,6 +1280,7 @@ with tab_manage:
                 if st.form_submit_button("✕ Cancel", use_container_width=True):
                     st.session_state.edit_faq_id = None
                     st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
         if submitted:
             tags_list = [t.strip() for t in f_tags.split(",") if t.strip()]
@@ -1262,56 +1292,56 @@ with tab_manage:
                 else:
                     new = add_faq(f_question, f_answer, f_category, tags_list)
                     st.success(f"✅ FAQ **{new['id']}** added!")
-
-                # Invalidate cached fixtures so next load re-embeds
                 load_pipeline_fixtures.clear()
                 st.session_state.edit_faq_id = None
                 st.rerun()
-
             except ValueError as e:
                 st.error(str(e))
 
-    # ── FAQ LIST ────────────────────────────────────────────────
     with m_list:
-        st.subheader(f"📄 All FAQs ({len(current_faqs)})")
-
-        # Filter by category
+        st.markdown(f"<h3 style='color:#4f46e5;font-size:1.4rem;margin-bottom:16px;'>📄 All FAQs ({len(current_faqs)})</h3>", unsafe_allow_html=True)
+        
+        st.markdown('<div class="manage-form-container" style="padding: 16px; margin-bottom: 20px; background: #f8fafc; border: 1px solid #e2e8f0; box-shadow: none;">', unsafe_allow_html=True)
         filt_cat_manage = st.selectbox(
-            "Filter by category", ["(all)"] + get_categories(),
-            key="manage_cat_filter",
+            "Filter by category", ["(all)"] + get_categories(), key="manage_cat_filter",
         )
-        search_q = st.text_input("Search FAQs", placeholder="Filter by question text…",
-                                 key="manage_search", label_visibility="collapsed")
-
+        search_q = st.text_input(
+            "Search FAQs", placeholder="Filter by question text…",
+            key="manage_search", label_visibility="collapsed",
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
+        
         shown = current_faqs
         if filt_cat_manage != "(all)":
             shown = [f for f in shown if f.get("category") == filt_cat_manage]
         if search_q:
             shown = [f for f in shown if search_q.lower() in f.get("question", "").lower()]
-
-        st.caption(f"Showing {len(shown)} of {len(current_faqs)}")
+        
+        st.markdown(f"<p style='color:#64748b; font-size:0.85rem; margin-bottom: 12px;'>Showing {len(shown)} of {len(current_faqs)}</p>", unsafe_allow_html=True)
 
         for faq in shown:
-            fid  = faq.get("id", "?")
-            cat  = faq.get("category", "")
-            tags = faq.get("tags", [])
+            fid    = faq.get("id", "?")
+            cat    = faq.get("category", "")
+            tags   = faq.get("tags", [])
             tags_h = _tags_html(tags) if tags else ""
             cat_h  = f'<span class="cat-chip">{cat}</span>' if cat else ""
 
-            col_card, col_edit, col_del = st.columns([7, 1.3, 1.3])
+            col_card, col_edit, col_del = st.columns([7.4, 1.3, 1.3])
             with col_card:
                 st.markdown(f"""
                 <div class="manage-faq-card">
                     <div class="manage-faq-q">{faq.get("question","")}</div>
-                    <div class="manage-faq-meta">{fid} &nbsp;{cat_h}&nbsp;{tags_h}</div>
+                    <div class="manage-faq-meta"><span style="color:#94a3b8; font-weight: 500;">{fid}</span> &nbsp;&bull;&nbsp; {cat_h}&nbsp;{tags_h}</div>
                 </div>
                 """, unsafe_allow_html=True)
             with col_edit:
+                st.markdown("<div style='margin-top: 22px;'></div>", unsafe_allow_html=True)
                 if st.button("✏️", key=f"edit_{fid}", help="Edit this FAQ",
                              use_container_width=True):
                     st.session_state.edit_faq_id = fid
                     st.rerun()
             with col_del:
+                st.markdown("<div style='margin-top: 22px;'></div>", unsafe_allow_html=True)
                 if st.button("🗑️", key=f"del_{fid}", help="Delete this FAQ",
                              use_container_width=True):
                     try:
@@ -1321,36 +1351,3 @@ with tab_manage:
                         st.rerun()
                     except ValueError as e:
                         st.error(str(e))
-
-# ─────────────────────────────────────────────────────────────
-# TAB 4: RAG ANSWER
-# ─────────────────────────────────────────────────────────────
-with tab_rag:
-    st.subheader("🤖 Generated RAG Answer")
-    rag_query = st.text_input("Ask a question for generated answer...", key="rag_input")
-    if st.button("Generate Answer", type="primary", key="rag_btn"):
-        if not rag_query.strip():
-            st.warning("Please enter a question.")
-        else:
-            with st.spinner("Generating answer..."):
-                rag_resp = generate_rag_answer(rag_query, top_k=3, fixtures=fixtures)
-                ans = rag_resp["generated_answer"]
-                docs = rag_resp["source_documents"]
-                
-                st.markdown(f'<div style="font-size:1.1rem; padding:15px; border-radius:8px; background:#f8fafc; border:1px solid #e2e8f0; color:#0f172a; margin-bottom:20px;">{ans}</div>', unsafe_allow_html=True)
-                
-                if len(docs) == 0 or "I could not find a precise answer" in ans:
-                    st.warning("Low confidence: answer may be incomplete.")
-                
-                st.divider()
-                st.markdown("#### Sources used:")
-                for doc in docs:
-                    q = doc.metadata.get("question", "")
-                    a = doc.page_content
-                    st.markdown(
-                        '<div style="margin-bottom:10px; padding:10px; border-left:3px solid #6366f1; background:#ffffff; border-radius: 0 4px 4px 0; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">'
-                        f'<strong style="color:#1e293b;">Q: {q}</strong><br>'
-                        f'<span style="color:#475569; font-size:0.9rem;">{a[:150]}...</span>'
-                        '</div>',
-                        unsafe_allow_html=True
-                    )

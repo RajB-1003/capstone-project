@@ -51,17 +51,17 @@ SEMANTIC_THRESHOLD_DEFAULT = 0.90   # ≥ 0.90 cosine similarity → semantic ca
 _CACHE_VERSION_TAG: str = f"{CORPUS_VERSION}:{EMBEDDING_VERSION}"
 
 
-def _make_exact_key(query: str) -> str:
+def _make_exact_key(query: str, user_id: int | None) -> str:
     """
     Build a version-aware cache key for the exact LRU cache.
 
-    key = sha256(normalized_query + "|" + version_tag)[:16]
+    key = sha256(str(user_id) + "|" + normalized_query + "|" + version_tag)[:16]
 
     The sha256 prefix is used purely for key uniqueness — the original
     query is stored separately in the result dict for display purposes.
     A 16-hex-char prefix (64-bit key space) is collision-free for N ≤ 50.
     """
-    payload = query.strip().lower() + "|" + _CACHE_VERSION_TAG
+    payload = f"{user_id}|{query.strip().lower()}|{_CACHE_VERSION_TAG}"
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 
@@ -93,8 +93,8 @@ class _LRUCache:
         self.stores    = 0
         self.evictions = 0
 
-    def lookup(self, query: str) -> dict | None:
-        key = _make_exact_key(query)   # version-aware key
+    def lookup(self, query: str, user_id: int | None) -> dict | None:
+        key = _make_exact_key(query, user_id)   # version-aware and user-aware key
         if key not in self._store:
             self.misses += 1
             return None
@@ -103,8 +103,8 @@ class _LRUCache:
         self.hits += 1
         return copy.deepcopy(self._store[key])   # deep copy — never return reference
 
-    def store(self, query: str, result: dict) -> None:
-        key = _make_exact_key(query)   # version-aware key
+    def store(self, query: str, result: dict, user_id: int | None) -> None:
+        key = _make_exact_key(query, user_id)   # version-aware and user-aware key
         if key in self._store:
             self._store.move_to_end(key)
             self._store[key] = copy.deepcopy(result)
@@ -162,8 +162,8 @@ class _SemanticCache:
     ):
         self.max_size  = max_size
         self.threshold = threshold
-        # Each entry: (embedding, query, result, version_tag)
-        self._entries: list[tuple[np.ndarray, str, dict, str]] = []
+        # Each entry: (embedding, query, result, version_tag, user_id)
+        self._entries: list[tuple[np.ndarray, str, dict, str, int | None]] = []
         self.hits      = 0
         self.misses    = 0
         self.stores    = 0
@@ -172,16 +172,17 @@ class _SemanticCache:
     def lookup(
         self,
         query_embedding: np.ndarray,
+        user_id: int | None,
         threshold: float | None = None,
     ) -> tuple[dict, float, str] | None:
         """
         Returns (result_copy, similarity_score, matched_query) or None.
-        Version-mismatched entries are silently skipped.
+        Version-mismatched entries and cross-user entries are silently skipped.
         """
         effective_threshold = threshold if threshold is not None else self.threshold
 
-        # Filter to current version only
-        valid_entries = [e for e in self._entries if e[3] == _CACHE_VERSION_TAG]
+        # Filter to current version AND current user only
+        valid_entries = [e for e in self._entries if e[3] == _CACHE_VERSION_TAG and e[4] == user_id]
         if not valid_entries:
             self.misses += 1
             return None
@@ -206,6 +207,7 @@ class _SemanticCache:
         embedding: np.ndarray,
         query: str,
         result: dict,
+        user_id: int | None,
     ) -> None:
         if len(self._entries) >= self.max_size:
             self._entries.pop(0)   # FIFO: remove oldest
@@ -215,6 +217,7 @@ class _SemanticCache:
             query,
             copy.deepcopy(result),
             _CACHE_VERSION_TAG,                    # version tag for invalidation
+            user_id,                               # user isolation
         ))
         self.stores += 1
 
@@ -244,20 +247,21 @@ _semantic_cache = _SemanticCache(
 # 4. Public API functions
 # ──────────────────────────────────────────────────────────────
 
-def cache_lookup(query: str) -> dict | None:
+def cache_lookup(query: str, user_id: int | None) -> dict | None:
     """
     Exact LRU cache lookup.
 
     Args:
         query: Raw query string (normalized internally).
+        user_id: ID of the querying user.
 
     Returns:
         Deep copy of cached result dict, or None on miss.
     """
-    return _exact_cache.lookup(query)
+    return _exact_cache.lookup(query, user_id)
 
 
-def cache_store(query: str, result: dict) -> None:
+def cache_store(query: str, result: dict, user_id: int | None) -> None:
     """
     Store a final response in the exact LRU cache.
 
@@ -265,12 +269,14 @@ def cache_store(query: str, result: dict) -> None:
         query:  Raw query string.
         result: Final response dict from build_final_response().
                 Must be the COMPLETE final result — no partial caching.
+        user_id: ID of the querying user.
     """
-    _exact_cache.store(query, result)
+    _exact_cache.store(query, result, user_id)
 
 
 def semantic_cache_lookup(
     query_embedding: np.ndarray,
+    user_id: int | None,
     threshold: float = SEMANTIC_THRESHOLD_DEFAULT,
 ) -> tuple[dict, float, str] | None:
     """
@@ -278,19 +284,21 @@ def semantic_cache_lookup(
 
     Args:
         query_embedding: L2-normalized 384-dim float32 vector.
+        user_id:         ID of the querying user.
         threshold:       Minimum cosine similarity to accept (default 0.98).
 
     Returns:
         Tuple (result_copy, similarity_score, matched_query) if hit,
         or None if no entry exceeds the threshold.
     """
-    return _semantic_cache.lookup(query_embedding, threshold=threshold)
+    return _semantic_cache.lookup(query_embedding, user_id, threshold=threshold)
 
 
 def semantic_cache_store(
     query_embedding: np.ndarray,
     query: str,
     result: dict,
+    user_id: int | None,
 ) -> None:
     """
     Store a final response in the semantic cache alongside its embedding.
@@ -299,8 +307,9 @@ def semantic_cache_store(
         query_embedding: L2-normalized 384-dim float32 vector from embed_single().
         query:           Original query string (for rationale messages).
         result:          Final response dict from build_final_response().
+        user_id:         ID of the querying user.
     """
-    _semantic_cache.store(query_embedding, query, result)
+    _semantic_cache.store(query_embedding, query, result, user_id)
 
 
 def clear_all_caches() -> None:

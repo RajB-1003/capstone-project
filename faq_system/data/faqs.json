@@ -19,7 +19,11 @@
       "course_code": "CS-202",
       "department": "Computer Science",
       "type": "schedule"
-    }
+    },
+    "tags": [
+      "course",
+      "cs-202"
+    ]
   },
   {
     "id": "faq_003",
@@ -30,7 +34,8 @@
       "course_code": "ENG-404",
       "department": "English",
       "type": "syllabus"
-    }
+    },
+    "tags": []
   },
   {
     "id": "faq_004",

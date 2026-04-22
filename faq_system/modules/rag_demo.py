@@ -79,8 +79,8 @@ def generate_rag_answer(query: str, top_k: int = 3, fixtures: tuple = None) -> d
     # Build context string
     context = ""
     for doc in docs:
-        context += f"Q: {doc.metadata.get('question', 'Unknown Question')}\n"
-        context += f"A: {doc.page_content}\n\n"
+        context += f"Q: {doc.get('question', 'Unknown Question')}\n"
+        context += f"A: {doc.get('answer', '')}\n\n"
 
     prompt = f"""
     You are a university assistant.

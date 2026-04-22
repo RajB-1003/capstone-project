@@ -74,6 +74,7 @@ from modules.confidence      import get_query_type, check_confidence
 from modules.feedback_store  import apply_feedback_reranking
 from modules.query_filter    import is_valid_unanswered_query   # Phase 2
 from modules.db              import store_unanswered_query       # Phase 2
+from modules.db              import log_query                    # Phase 5: analytics
 
 import logging as _logging
 _log = _logging.getLogger(__name__)
@@ -202,6 +203,7 @@ def _fuse_signals(entity_detected: bool, semantic_score: float) -> tuple[str, st
 
 def run_pipeline(
     query: str,
+    user_id: int | None,
     model,
     corpus_embeddings,
     faq_docs: list[dict],
@@ -238,11 +240,11 @@ def run_pipeline(
     profiler = LatencyProfiler()
 
     # ── Step 1: Exact cache check ─────────────────────────────
-    exact_hit = cache_lookup(query)
+    exact_hit = cache_lookup(query, user_id)
     if exact_hit is not None:
         exact_hit = copy.deepcopy(exact_hit)
         exact_hit["rationale"] = (
-            "[Served from cache] Original routing decision reused. "
+            "[⚡ Served from your cache] Original routing decision reused. "
             + exact_hit.get("rationale", "")
         )
         exact_hit.setdefault("query_type", get_query_type(exact_hit.get("route_decision", "")))
@@ -263,6 +265,18 @@ def run_pipeline(
         )
         # Phase 2: track low-confidence queries even on cache hits
         _track_unanswered(query, exact_hit.get("low_confidence", False))
+        # Phase 5: log analytics (cache hit path)
+        _total_latency = exact_hit.get("latency_ms", {}).get("total", 0.0)
+        if not isinstance(_total_latency, (int, float)):
+            _total_latency = 0.0
+        _top_conf = exact_hit.get("results", [{}])[0].get("score", 0.0) if exact_hit.get("results") else 0.0
+        log_query(
+            query=query,
+            route="cached",
+            confidence=_top_conf,
+            latency=_total_latency,
+            cache_hit=True,
+        )
         return exact_hit
 
     # ── Step 2: Embed query once (used for semantic cache + semantic search) ──
@@ -270,12 +284,12 @@ def run_pipeline(
         query_vec = embed_single(query, model)
 
     # ── Step 3: Semantic cache check ──────────────────────────
-    semantic_hit = semantic_cache_lookup(query_vec)
+    semantic_hit = semantic_cache_lookup(query_vec, user_id)
     if semantic_hit is not None:
         result, similarity, matched_query = semantic_hit
         result = copy.deepcopy(result)
         result["rationale"] = (
-            f"[Served from cache] Original routing decision reused. "
+            f"[⚡ Served from your cache] Original routing decision reused. "
             f"(Semantic similarity {similarity:.4f} matched cached query \"{matched_query[:60]}\"). "
             + result.get("rationale", "")
         )
@@ -302,6 +316,18 @@ def run_pipeline(
         )
         # Phase 2: track low-confidence queries even on semantic cache hits
         _track_unanswered(query, result.get("low_confidence", False))
+        # Phase 5: log analytics (semantic cache hit path)
+        _total_latency = result.get("latency_ms", {}).get("total", 0.0)
+        if not isinstance(_total_latency, (int, float)):
+            _total_latency = 0.0
+        _top_conf = result.get("results", [{}])[0].get("score", 0.0) if result.get("results") else 0.0
+        log_query(
+            query=query,
+            route="cached",
+            confidence=_top_conf,
+            latency=_total_latency,
+            cache_hit=True,
+        )
         return result
 
     # ── Step 4: Build initial state ───────────────────────────
@@ -434,8 +460,8 @@ def run_pipeline(
     _track_unanswered(query, low_conf)
 
     # ── Step 11: Store in both caches ─────────────────────────
-    cache_store(query, response)
-    semantic_cache_store(query_vec, query, response)
+    cache_store(query, response, user_id)
+    semantic_cache_store(query_vec, query, response, user_id)
 
     # ── Step 12: Attach latency, cache debug info, and return ─
     response = copy.deepcopy(response)
@@ -443,5 +469,17 @@ def run_pipeline(
     response["latency_ms"]       = profile
     response["cache_type"]       = "miss"  # debug: full pipeline was executed
     response["cache_similarity"] = 0.0     # debug: no cache match
+
+    # ── Phase 5: Log analytics (full pipeline path) ────────────
+    _p5_total   = profile.get("total", 0.0)
+    _p5_results = response.get("results", [])
+    _p5_conf    = _p5_results[0].get("score", 0.0) if _p5_results else 0.0
+    log_query(
+        query=query,
+        route=response.get("route_decision", route),
+        confidence=_p5_conf,
+        latency=_p5_total,
+        cache_hit=False,
+    )
 
     return response
