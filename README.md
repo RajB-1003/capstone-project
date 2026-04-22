@@ -109,13 +109,21 @@ pip install -r faq_system/requirements.txt
 pip install streamlit
 ```
 
-### 4. Run the app
+### 4. (Optional) Install Voice & Authentication Dependencies
+If you want to enable the experimental voice transcription and authentication features, run the voice dependency script:
 ```bash
+cd faq_system
+python modules/install_voice_deps.py
+```
+
+### 5. Run the app
+```bash
+# Make sure you are in the faq_system directory
 cd faq_system
 streamlit run app.py
 ```
 
-The app will open at `http://localhost:8501`.
+The app will initialize the local database automatically and open at `http://localhost:8501`.
 
 ---
 
