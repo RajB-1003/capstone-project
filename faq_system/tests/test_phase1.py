@@ -22,14 +22,14 @@ import numpy as np
 # ── Allow running from faq_system/ root ───────────────────────
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from modules.embedder import (
+from app.core.embedder import (
     load_embedding_model,
     embed_texts,
     embed_single,
     load_and_embed_faqs,
     EMBEDDING_DIM,
 )
-from modules.semantic_search import search_semantic
+from app.core.semantic_search import search_semantic
 
 # ────────────────────────────────────────────────────────────────
 # Shared fixtures (loaded once)
